@@ -60,3 +60,19 @@ directory or an empty folder.
 The script uses `git` to fetch the latest changes from the configured
 repository. You can change the repository URL by editing the `REPO_URL`
 variable in `update/update.sh`.
+
+## Net Installer
+
+A script `net_installer.sh` is provided for installing OpenB directly from the
+internet. The script clones this repository to a temporary directory, builds the
+browser and copies the resulting `openb` binary to `/usr/local/bin`.
+
+Run it with:
+
+```bash
+./net_installer.sh
+```
+
+Root privileges are required for the installation step. Ensure the required build
+dependencies for GTK and WebKit2GTK are installed on your system.
+
