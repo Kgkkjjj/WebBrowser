@@ -38,11 +38,14 @@ The browser opens on a simple home page. Use the address bar to enter a URL or a
 
 ## Updating
 
-An `update` directory contains a simple script to update the browser from GitHub.
-Set `REPO_URL` in `update/update.sh` to your repository URL, then run:
+An `update` directory contains a simple script to pull the latest changes from
+[this repository](https://github.com/Kgkkjjj/WebBrowser/tree/codex/build-web-browser-with-gtk-3-gui).
+To update the browser, run:
 
 ```bash
 ./update/update.sh
 ```
 
 The script uses `git` to fetch the latest changes from the configured repository.
+The repository URL can be changed by editing the `REPO_URL` variable in
+`update/update.sh`.

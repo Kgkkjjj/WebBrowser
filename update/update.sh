@@ -1,7 +1,8 @@
 #!/bin/sh
 
-REPO_URL="https://github.com/username/WebBrowser.git"
-BRANCH="main"
+REPO_URL="https://github.com/Kgkkjjj/WebBrowser.git"
+# default branch to pull updates from
+BRANCH="codex/build-web-browser-with-gtk-3-gui"
 
 if [ ! -d .git ]; then
     echo "No git repository found. Cloning..."
