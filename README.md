@@ -1,7 +1,7 @@
 # Simple GTK Web Browser
 
 This project is a minimal web browser written in C using GTK 3 and WebKit2GTK.
-It demonstrates how to build a lightweight browser with a custom home page and a search entry.
+It demonstrates how to build a lightweight browser with a custom home page, an address bar and basic navigation controls.
 
 ## Building
 
@@ -34,4 +34,4 @@ Run the compiled binary:
 ./browser
 ```
 
-The browser starts on a basic home page with a search bar. Enter a query and press `Enter` to search using DuckDuckGo.
+The browser opens on a simple home page. Use the address bar to enter a URL or a search query.
