@@ -43,12 +43,16 @@ buttons. Click the **Info** button to see details about the browser.
 
 An `update` directory contains a simple script to pull the latest changes from
 [this repository](https://github.com/Kgkkjjj/WebBrowser/tree/codex/build-web-browser-with-gtk-3-gui).
-To update the browser, run:
+Run the update script from the project root with:
 
 ```bash
 ./update/update.sh
 ```
 
-The script uses `git` to fetch the latest changes from the configured repository.
-The repository URL can be changed by editing the `REPO_URL` variable in
-`update/update.sh`.
+If the current directory is not a git repository and already contains files,
+the script will abort instead of cloning. Make sure to run it inside the project
+directory or an empty folder.
+
+The script uses `git` to fetch the latest changes from the configured
+repository. You can change the repository URL by editing the `REPO_URL`
+variable in `update/update.sh`.
