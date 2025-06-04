@@ -125,7 +125,14 @@ int main(int argc, char *argv[]) {
 
     program_path = argv[0];
 
-    WebKitWebContext *context = webkit_web_context_get_default();
+    gchar *data_dir = g_build_filename(g_get_user_data_dir(), "openb", NULL);
+    gchar *cache_dir = g_build_filename(g_get_user_cache_dir(), "openb", NULL);
+    WebKitWebsiteDataManager *manager = webkit_website_data_manager_new(
+        "base-data-directory", data_dir,
+        "base-cache-directory", cache_dir,
+        NULL);
+
+    WebKitWebContext *context = webkit_web_context_new_with_website_data_manager(manager);
     webkit_web_context_set_cache_model(context, WEBKIT_CACHE_MODEL_DOCUMENT_BROWSER);
 
     GtkWidget *window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
@@ -164,7 +171,7 @@ int main(int argc, char *argv[]) {
     gtk_widget_add_accelerator(GTK_WIDGET(reload), "clicked", accel, GDK_KEY_F5, 0, GTK_ACCEL_VISIBLE);
     gtk_widget_add_accelerator(GTK_WIDGET(home), "clicked", accel, GDK_KEY_F6, 0, GTK_ACCEL_VISIBLE);
     gtk_widget_add_accelerator(GTK_WIDGET(new_window), "clicked", accel, GDK_KEY_N, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
-    web_view = WEBKIT_WEB_VIEW(webkit_web_view_new());
+    web_view = WEBKIT_WEB_VIEW(webkit_web_view_new_with_context(context));
     g_signal_connect(back, "clicked", G_CALLBACK(navigate_back), NULL);
     g_signal_connect(forward, "clicked", G_CALLBACK(navigate_forward), NULL);
     g_signal_connect(reload, "clicked", G_CALLBACK(reload_page), NULL);
@@ -191,5 +198,10 @@ int main(int argc, char *argv[]) {
 
     gtk_widget_show_all(window);
     gtk_main();
+
+    g_free(data_dir);
+    g_free(cache_dir);
+    g_object_unref(manager);
+    g_object_unref(context);
     return 0;
 }

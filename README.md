@@ -1,6 +1,6 @@
 # OpenB - GTK Web Browser
 
-OpenB is a small web browser written in C using GTK 3 and WebKit2GTK. It provides a simple interface with fast loading through WebKit's browser cache, keyboard shortcuts, and a customizable home page. The toolbar includes navigation controls, a new window button and an **Info** dialog describing the browser.
+OpenB is a small web browser written in C using GTK 3 and WebKit2GTK. It provides a simple interface with keyboard shortcuts and a customizable home page. Pages load quickly thanks to WebKit's disk cache, which is stored under `~/.cache/openb`. The toolbar includes navigation controls, a new window button and an **Info** dialog describing the browser.
 
 ## Building
 
@@ -33,11 +33,15 @@ Run the compiled binary:
 ./openb
 ```
 
-The browser opens on a simple home page defined in `data/home.html`. This page
-provides a search form and a link to your downloads directory. Feel free to edit
-the file to customize the welcome screen. Use the address bar to enter a URL or
-a search query. The toolbar offers back, forward, reload, stop, home and info
-buttons. Click the **Info** button to see details about the browser.
+The browser opens on a home page defined in `data/home.html`. It features a
+search bar and several quick links similar to the new‑tab page of Firefox.
+Feel free to edit this file to tailor the welcome screen to your needs. Use the
+address bar to enter a URL or a search query. The toolbar offers back, forward,
+reload, stop, home and info buttons. Click the **Info** button to see details
+about the browser.
+
+OpenB stores persistent data in `~/.local/share/openb` and caches pages under
+`~/.cache/openb` for faster loading.
 
 ## Updating
 
