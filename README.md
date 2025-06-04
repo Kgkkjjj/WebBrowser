@@ -35,3 +35,14 @@ Run the compiled binary:
 ```
 
 The browser opens on a simple home page. Use the address bar to enter a URL or a search query.
+
+## Updating
+
+An `update` directory contains a simple script to update the browser from GitHub.
+Set `REPO_URL` in `update/update.sh` to your repository URL, then run:
+
+```bash
+./update/update.sh
+```
+
+The script uses `git` to fetch the latest changes from the configured repository.
