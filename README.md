@@ -34,7 +34,10 @@ Run the compiled binary:
 ./browser
 ```
 
-The browser opens on a simple home page. Use the address bar to enter a URL or a search query.
+The browser opens on a simple home page defined in `data/home.html`. This page
+provides a search form and a link to your downloads directory. Feel free to edit
+the file to customize the welcome screen. Use the address bar to enter a URL or
+a search query.
 
 ## Updating
 

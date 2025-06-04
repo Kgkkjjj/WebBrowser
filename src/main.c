@@ -5,8 +5,21 @@ static WebKitWebView *web_view;
 static GtkEntry *url_entry;
 static GtkWidget *progress_bar;
 
+static gchar *home_file_uri = NULL;
+
+static void load_home_page(void) {
+    if (!home_file_uri) {
+        gchar *cwd = g_get_current_dir();
+        gchar *path = g_build_filename(cwd, "data", "home.html", NULL);
+        home_file_uri = g_strdup_printf("file://%s", path);
+        g_free(path);
+        g_free(cwd);
+    }
+    webkit_web_view_load_uri(web_view, home_file_uri);
+}
+
 static void navigate_home(GtkWidget *widget, gpointer data) {
-    webkit_web_view_load_uri(web_view, "about:home");
+    load_home_page();
 }
 
 static void stop_loading(GtkWidget *widget, gpointer data) {
@@ -51,21 +64,11 @@ static gboolean load_changed(WebKitWebView *view, WebKitLoadEvent event, gpointe
         gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(progress_bar), 0.0);
     } else if (event == WEBKIT_LOAD_COMMITTED) {
         const gchar *uri = webkit_web_view_get_uri(view);
-        gtk_entry_set_text(url_entry, uri ? uri : "");
+        if (home_file_uri && g_strcmp0(uri, home_file_uri) == 0)
+            gtk_entry_set_text(url_entry, "");
+        else
+            gtk_entry_set_text(url_entry, uri ? uri : "");
     } else if (event == WEBKIT_LOAD_FINISHED) {
-        const gchar *uri = webkit_web_view_get_uri(view);
-        if (g_strcmp0(uri, "about:home") == 0) {
-            const gchar *home_html =
-                "<html><body style='font-family:sans-serif; text-align:center;'>"
-                "<h1>Welcome</h1>"
-                "<form action='https://duckduckgo.com/' method='GET'>"
-                "<input type='text' name='q' style='width:60%; padding:5px;'/>"
-                "<input type='submit' value='Search'/>"
-                "</form>"
-                "<p><a href='file:///downloads/'>Downloads</a></p>"
-                "</body></html>";
-            webkit_web_view_load_html(view, home_html, "about:home");
-        }
         gtk_widget_hide(progress_bar);
     }
     return FALSE;
@@ -125,7 +128,7 @@ int main(int argc, char *argv[]) {
     gtk_container_add(GTK_CONTAINER(window), vbox);
 
     g_signal_connect(window, "destroy", G_CALLBACK(gtk_main_quit), NULL);
-    webkit_web_view_load_uri(web_view, "about:home");
+    load_home_page();
 
     gtk_widget_show_all(window);
     gtk_main();
