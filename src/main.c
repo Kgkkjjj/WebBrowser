@@ -79,6 +79,20 @@ static void progress_changed(WebKitWebView *view, GParamSpec *pspec, gpointer da
     gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(progress_bar), progress);
 }
 
+static void show_about(GtkWidget *widget, gpointer data) {
+    GtkWindow *parent = GTK_WINDOW(data);
+    GtkWidget *dialog = gtk_message_dialog_new(
+        parent,
+        GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT,
+        GTK_MESSAGE_INFO,
+        GTK_BUTTONS_OK,
+        "Simple Browser\nBuilt with GTK 3 and WebKit2GTK"
+    );
+    gtk_window_set_title(GTK_WINDOW(dialog), "About Simple Browser");
+    gtk_dialog_run(GTK_DIALOG(dialog));
+    gtk_widget_destroy(dialog);
+}
+
 int main(int argc, char *argv[]) {
     gtk_init(&argc, &argv);
 
@@ -94,6 +108,7 @@ int main(int argc, char *argv[]) {
     GtkToolItem *reload = gtk_tool_button_new_from_stock(GTK_STOCK_REFRESH);
     GtkToolItem *stop = gtk_tool_button_new_from_stock(GTK_STOCK_STOP);
     GtkToolItem *home = gtk_tool_button_new_from_stock(GTK_STOCK_HOME);
+    GtkToolItem *about = gtk_tool_button_new_from_stock(GTK_STOCK_ABOUT);
     GtkToolItem *separator = gtk_separator_tool_item_new();
     GtkWidget *entry_widget = gtk_entry_new();
     url_entry = GTK_ENTRY(entry_widget);
@@ -108,6 +123,7 @@ int main(int argc, char *argv[]) {
     gtk_toolbar_insert(GTK_TOOLBAR(toolbar), home, -1);
     gtk_toolbar_insert(GTK_TOOLBAR(toolbar), separator, -1);
     gtk_toolbar_insert(GTK_TOOLBAR(toolbar), entry_item, -1);
+    gtk_toolbar_insert(GTK_TOOLBAR(toolbar), about, -1);
 
     web_view = WEBKIT_WEB_VIEW(webkit_web_view_new());
     g_signal_connect(back, "clicked", G_CALLBACK(navigate_back), NULL);
@@ -115,6 +131,7 @@ int main(int argc, char *argv[]) {
     g_signal_connect(reload, "clicked", G_CALLBACK(reload_page), NULL);
     g_signal_connect(stop, "clicked", G_CALLBACK(stop_loading), NULL);
     g_signal_connect(home, "clicked", G_CALLBACK(navigate_home), NULL);
+    g_signal_connect(about, "clicked", G_CALLBACK(show_about), window);
     g_signal_connect(url_entry, "activate", G_CALLBACK(on_url_activate), NULL);
     g_signal_connect(web_view, "load-changed", G_CALLBACK(load_changed), NULL);
     g_signal_connect(web_view, "notify::estimated-load-progress", G_CALLBACK(progress_changed), NULL);

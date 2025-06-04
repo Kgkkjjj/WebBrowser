@@ -1,7 +1,7 @@
 # Simple GTK Web Browser
 
 This project is a minimal web browser written in C using GTK 3 and WebKit2GTK.
-It demonstrates how to build a lightweight browser with a custom home page, an address bar and basic navigation controls.
+It demonstrates how to build a lightweight browser with a custom home page, an address bar and basic navigation controls. The toolbar also includes an **Info** button that shows details about the browser.
 
 ## Building
 
@@ -37,7 +37,8 @@ Run the compiled binary:
 The browser opens on a simple home page defined in `data/home.html`. This page
 provides a search form and a link to your downloads directory. Feel free to edit
 the file to customize the welcome screen. Use the address bar to enter a URL or
-a search query.
+a search query. The toolbar offers back, forward, reload, stop, home and info
+buttons. Click the **Info** button to see details about the browser.
 
 ## Updating
 
