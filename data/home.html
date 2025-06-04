@@ -2,18 +2,23 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>Welcome</title>
+    <title>Welcome to OpenB</title>
     <style>
         body { font-family: sans-serif; text-align: center; padding-top: 50px; }
         input[type="text"] { width: 60%; padding: 5px; }
+        nav a { margin: 0 10px; }
     </style>
 </head>
 <body>
-    <h1>Welcome to Simple Browser</h1>
+    <h1>Welcome to OpenB</h1>
+    <p>A lightweight GTK browser</p>
     <form action="https://duckduckgo.com/" method="GET">
         <input type="text" name="q" placeholder="Search the web">
         <input type="submit" value="Search">
     </form>
-    <p><a href="file:///downloads/">Downloads</a></p>
+    <nav>
+        <a href="file:///downloads/">Downloads</a>
+        <a href="https://www.example.com">News</a>
+    </nav>
 </body>
 </html>

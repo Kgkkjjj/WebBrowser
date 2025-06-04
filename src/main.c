@@ -1,9 +1,11 @@
 #include <gtk/gtk.h>
+#include <gdk/gdkkeysyms.h>
 #include <webkit2/webkit2.h>
 
 static WebKitWebView *web_view;
 static GtkEntry *url_entry;
 static GtkWidget *progress_bar;
+static const char *program_path;
 
 static gchar *home_file_uri = NULL;
 
@@ -77,6 +79,31 @@ static gboolean load_changed(WebKitWebView *view, WebKitLoadEvent event, gpointe
 static void progress_changed(WebKitWebView *view, GParamSpec *pspec, gpointer data) {
     double progress = webkit_web_view_get_estimated_load_progress(view);
     gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(progress_bar), progress);
+    gchar *pct = g_strdup_printf("%d%%", (int)(progress * 100));
+    gtk_progress_bar_set_text(GTK_PROGRESS_BAR(progress_bar), pct);
+    g_free(pct);
+}
+
+static gboolean load_failed(WebKitWebView *view,
+                            WebKitLoadEvent event,
+                            const gchar *uri,
+                            GError *error,
+                            gpointer data) {
+    GtkWidget *dialog = gtk_message_dialog_new(GTK_WINDOW(data),
+        GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT,
+        GTK_MESSAGE_ERROR,
+        GTK_BUTTONS_CLOSE,
+        "Failed to load %s:\n%s",
+        uri,
+        error->message);
+    gtk_dialog_run(GTK_DIALOG(dialog));
+    gtk_widget_destroy(dialog);
+    return FALSE;
+}
+
+static void on_new_window(GtkWidget *widget, gpointer data) {
+    if (program_path)
+        g_spawn_command_line_async(program_path, NULL);
 }
 
 static void show_about(GtkWidget *widget, gpointer data) {
@@ -86,9 +113,9 @@ static void show_about(GtkWidget *widget, gpointer data) {
         GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT,
         GTK_MESSAGE_INFO,
         GTK_BUTTONS_OK,
-        "Simple Browser\nBuilt with GTK 3 and WebKit2GTK"
+        "OpenB\nBuilt with GTK 3 and WebKit2GTK"
     );
-    gtk_window_set_title(GTK_WINDOW(dialog), "About Simple Browser");
+    gtk_window_set_title(GTK_WINDOW(dialog), "About OpenB");
     gtk_dialog_run(GTK_DIALOG(dialog));
     gtk_widget_destroy(dialog);
 }
@@ -96,18 +123,26 @@ static void show_about(GtkWidget *widget, gpointer data) {
 int main(int argc, char *argv[]) {
     gtk_init(&argc, &argv);
 
+    program_path = argv[0];
+
+    WebKitWebContext *context = webkit_web_context_get_default();
+    webkit_web_context_set_cache_model(context, WEBKIT_CACHE_MODEL_DOCUMENT_BROWSER);
+
     GtkWidget *window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
     gtk_window_set_default_size(GTK_WINDOW(window), 800, 600);
-    gtk_window_set_title(GTK_WINDOW(window), "Simple Browser");
+    gtk_window_set_title(GTK_WINDOW(window), "OpenB");
 
     GtkWidget *vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
     GtkWidget *toolbar = gtk_toolbar_new();
+    GtkAccelGroup *accel = gtk_accel_group_new();
+    gtk_window_add_accel_group(GTK_WINDOW(window), accel);
 
     GtkToolItem *back = gtk_tool_button_new_from_stock(GTK_STOCK_GO_BACK);
     GtkToolItem *forward = gtk_tool_button_new_from_stock(GTK_STOCK_GO_FORWARD);
     GtkToolItem *reload = gtk_tool_button_new_from_stock(GTK_STOCK_REFRESH);
     GtkToolItem *stop = gtk_tool_button_new_from_stock(GTK_STOCK_STOP);
     GtkToolItem *home = gtk_tool_button_new_from_stock(GTK_STOCK_HOME);
+    GtkToolItem *new_window = gtk_tool_button_new_from_stock(GTK_STOCK_NEW);
     GtkToolItem *about = gtk_tool_button_new_from_stock(GTK_STOCK_ABOUT);
     GtkToolItem *separator = gtk_separator_tool_item_new();
     GtkWidget *entry_widget = gtk_entry_new();
@@ -121,23 +156,30 @@ int main(int argc, char *argv[]) {
     gtk_toolbar_insert(GTK_TOOLBAR(toolbar), reload, -1);
     gtk_toolbar_insert(GTK_TOOLBAR(toolbar), stop, -1);
     gtk_toolbar_insert(GTK_TOOLBAR(toolbar), home, -1);
+    gtk_toolbar_insert(GTK_TOOLBAR(toolbar), new_window, -1);
     gtk_toolbar_insert(GTK_TOOLBAR(toolbar), separator, -1);
     gtk_toolbar_insert(GTK_TOOLBAR(toolbar), entry_item, -1);
     gtk_toolbar_insert(GTK_TOOLBAR(toolbar), about, -1);
 
+    gtk_widget_add_accelerator(GTK_WIDGET(reload), "clicked", accel, GDK_KEY_F5, 0, GTK_ACCEL_VISIBLE);
+    gtk_widget_add_accelerator(GTK_WIDGET(home), "clicked", accel, GDK_KEY_F6, 0, GTK_ACCEL_VISIBLE);
+    gtk_widget_add_accelerator(GTK_WIDGET(new_window), "clicked", accel, GDK_KEY_N, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
     web_view = WEBKIT_WEB_VIEW(webkit_web_view_new());
     g_signal_connect(back, "clicked", G_CALLBACK(navigate_back), NULL);
     g_signal_connect(forward, "clicked", G_CALLBACK(navigate_forward), NULL);
     g_signal_connect(reload, "clicked", G_CALLBACK(reload_page), NULL);
     g_signal_connect(stop, "clicked", G_CALLBACK(stop_loading), NULL);
     g_signal_connect(home, "clicked", G_CALLBACK(navigate_home), NULL);
+    g_signal_connect(new_window, "clicked", G_CALLBACK(on_new_window), NULL);
     g_signal_connect(about, "clicked", G_CALLBACK(show_about), window);
     g_signal_connect(url_entry, "activate", G_CALLBACK(on_url_activate), NULL);
     g_signal_connect(web_view, "load-changed", G_CALLBACK(load_changed), NULL);
     g_signal_connect(web_view, "notify::estimated-load-progress", G_CALLBACK(progress_changed), NULL);
+    g_signal_connect(web_view, "load-failed", G_CALLBACK(load_failed), window);
 
     gtk_box_pack_start(GTK_BOX(vbox), toolbar, FALSE, FALSE, 0);
     progress_bar = gtk_progress_bar_new();
+    gtk_progress_bar_set_show_text(GTK_PROGRESS_BAR(progress_bar), TRUE);
     gtk_widget_set_no_show_all(progress_bar, TRUE);
 
     gtk_box_pack_start(GTK_BOX(vbox), GTK_WIDGET(web_view), TRUE, TRUE, 0);

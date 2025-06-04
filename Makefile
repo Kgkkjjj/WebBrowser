@@ -5,7 +5,7 @@ CFLAGS += $(shell pkg-config --cflags gtk+-3.0 $(WEBKIT_PKG))
 LDFLAGS += $(shell pkg-config --libs gtk+-3.0 $(WEBKIT_PKG))
 
 SRC = src/main.c
-OUT = browser
+OUT = openb
 
 all: $(OUT)
 

@@ -1,7 +1,6 @@
-# Simple GTK Web Browser
+# OpenB - GTK Web Browser
 
-This project is a minimal web browser written in C using GTK 3 and WebKit2GTK.
-It demonstrates how to build a lightweight browser with a custom home page, an address bar and basic navigation controls. The toolbar also includes an **Info** button that shows details about the browser.
+OpenB is a small web browser written in C using GTK 3 and WebKit2GTK. It provides a simple interface with fast loading through WebKit's browser cache, keyboard shortcuts, and a customizable home page. The toolbar includes navigation controls, a new window button and an **Info** dialog describing the browser.
 
 ## Building
 
@@ -31,7 +30,7 @@ make
 Run the compiled binary:
 
 ```bash
-./browser
+./openb
 ```
 
 The browser opens on a simple home page defined in `data/home.html`. This page
