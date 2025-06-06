@@ -34,13 +34,14 @@ Run the compiled binary:
 ```
 
 The browser opens on a home page defined in `data/home.html`. It now sports a
-cleaner layout with a larger search box and flexible link tiles. Feel free to
-customize this file to suit your preferences. When installed via the net
-installer, this home page is copied to `/usr/local/share/openb` so the browser
-can find it from anywhere. Use the address bar to enter a URL or a search query.
-The toolbar offers back, forward, reload, stop, home and info buttons. Click the
-**Info** button to see details about the browser. A status bar at the bottom
-displays page load progress and link targets.
+cleaner layout with a larger search box and flexible link tiles linking to
+`downloads.html` and `news.html`. When installed via the net installer, the
+entire `data` folder is copied to `/usr/local/share/openb` so these pages work
+even when you run the browser outside the source tree. Use the address bar to
+enter a URL or a search query. The toolbar offers back, forward, reload, stop,
+home and info buttons. The **Info** button now opens a full about dialog with
+details and a link to the project website. A status bar at the bottom displays
+page load progress and link targets.
 
 OpenB stores persistent data in `~/.local/share/openb` and caches pages under
 `~/.cache/openb` for faster loading.

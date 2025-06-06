@@ -146,17 +146,18 @@ static void on_new_window(GtkWidget *widget, gpointer data) {
 }
 
 static void show_about(GtkWidget *widget, gpointer data) {
-    GtkWindow *parent = GTK_WINDOW(data);
-    GtkWidget *dialog = gtk_message_dialog_new(
-        parent,
-        GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT,
-        GTK_MESSAGE_INFO,
-        GTK_BUTTONS_OK,
-        "OpenB\nBuilt with GTK 3 and WebKit2GTK"
-    );
-    gtk_window_set_title(GTK_WINDOW(dialog), "About OpenB");
+    GtkAboutDialog *dialog = GTK_ABOUT_DIALOG(gtk_about_dialog_new());
+    gtk_about_dialog_set_program_name(dialog, "OpenB");
+    gtk_about_dialog_set_version(dialog, "1.0");
+    gtk_about_dialog_set_comments(dialog,
+        "Lightweight WebKit browser built with GTK 3.");
+    gtk_about_dialog_set_website(dialog,
+        "https://github.com/Kgkkjjj/WebBrowser");
+    const gchar *authors[] = { "OpenB contributors", NULL };
+    gtk_about_dialog_set_authors(dialog, authors);
+    gtk_window_set_transient_for(GTK_WINDOW(dialog), GTK_WINDOW(data));
     gtk_dialog_run(GTK_DIALOG(dialog));
-    gtk_widget_destroy(dialog);
+    gtk_widget_destroy(GTK_WIDGET(dialog));
 }
 
 int main(int argc, char *argv[]) {
