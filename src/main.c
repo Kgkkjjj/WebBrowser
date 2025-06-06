@@ -22,6 +22,8 @@ static GtkWidget *downloads_window = NULL;
 static GtkWidget *downloads_list = NULL;
 
 static GSList *search_history = NULL;
+static gchar *background_file = NULL;
+static gchar *bg_image_path = NULL;
 
 static void load_extensions(WebKitUserContentManager *manager) {
     const gchar *dirs[] = {
@@ -144,6 +146,18 @@ static gboolean load_changed(WebKitWebView *view, WebKitLoadEvent event, gpointe
     } else if (event == WEBKIT_LOAD_FINISHED) {
         gtk_widget_hide(progress_bar);
         gtk_label_set_text(GTK_LABEL(status_label), "Done");
+        const gchar *uri = webkit_web_view_get_uri(view);
+        if (home_file_uri && bg_image_path && g_strcmp0(uri, home_file_uri) == 0) {
+            gchar *file_uri = g_filename_to_uri(bg_image_path, NULL, NULL);
+            if (file_uri) {
+                gchar *js = g_strdup_printf(
+                    "document.body.style.backgroundImage='url(\"%s\")';document.body.style.backgroundSize='cover';",
+                    file_uri);
+                webkit_web_view_run_javascript(view, js, NULL, NULL, NULL);
+                g_free(js);
+            }
+            g_free(file_uri);
+        }
     }
     return FALSE;
 }
@@ -321,6 +335,36 @@ static void show_search_history(GtkWidget *widget, gpointer data) {
     gtk_widget_destroy(dialog);
 }
 
+static void choose_background(GtkWidget *widget, gpointer data) {
+    GtkWidget *dialog = gtk_file_chooser_dialog_new(
+        "Select Background", GTK_WINDOW(main_window),
+        GTK_FILE_CHOOSER_ACTION_OPEN,
+        "Cancel", GTK_RESPONSE_CANCEL,
+        "Open", GTK_RESPONSE_ACCEPT,
+        NULL);
+    GtkFileFilter *filter = gtk_file_filter_new();
+    gtk_file_filter_add_pixbuf_formats(filter);
+    gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(dialog), filter);
+    if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
+        gchar *fname = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog));
+        if (fname) {
+            g_free(bg_image_path);
+            bg_image_path = fname;
+            g_file_set_contents(background_file, bg_image_path, -1, NULL);
+            gchar *uri = g_filename_to_uri(bg_image_path, NULL, NULL);
+            if (uri) {
+                gchar *js = g_strdup_printf(
+                    "document.body.style.backgroundImage='url(\"%s\")';document.body.style.backgroundSize='cover';",
+                    uri);
+                webkit_web_view_run_javascript(web_view, js, NULL, NULL, NULL);
+                g_free(js);
+            }
+            g_free(uri);
+        }
+    }
+    gtk_widget_destroy(dialog);
+}
+
 static void downloads_window_show(void) {
     if (!downloads_window) {
         downloads_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
@@ -484,6 +528,9 @@ int main(int argc, char *argv[]) {
 
     gchar *data_dir = g_build_filename(g_get_user_data_dir(), "openb", NULL);
     gchar *cache_dir = g_build_filename(g_get_user_cache_dir(), "openb", NULL);
+    g_mkdir_with_parents(data_dir, 0755);
+    background_file = g_build_filename(data_dir, "background.txt", NULL);
+    g_file_get_contents(background_file, &bg_image_path, NULL, NULL);
     WebKitWebsiteDataManager *manager = webkit_website_data_manager_new(
         "base-data-directory", data_dir,
         "base-cache-directory", cache_dir,
@@ -563,6 +610,10 @@ int main(int argc, char *argv[]) {
     GtkWidget *ext_icon = gtk_image_new_from_icon_name("preferences-system", GTK_ICON_SIZE_LARGE_TOOLBAR);
     gtk_tool_button_set_icon_widget(GTK_TOOL_BUTTON(ext_btn), ext_icon);
     gtk_widget_show(ext_icon);
+    GtkToolItem *bg_btn = gtk_tool_button_new(NULL, "Background");
+    GtkWidget *bg_icon = gtk_image_new_from_icon_name("preferences-desktop-wallpaper", GTK_ICON_SIZE_LARGE_TOOLBAR);
+    gtk_tool_button_set_icon_widget(GTK_TOOL_BUTTON(bg_btn), bg_icon);
+    gtk_widget_show(bg_icon);
     GtkToolItem *about = gtk_tool_button_new_from_stock(GTK_STOCK_ABOUT);
     GtkToolItem *separator = gtk_separator_tool_item_new();
     GtkWidget *entry_widget = gtk_entry_new();
@@ -592,6 +643,7 @@ int main(int argc, char *argv[]) {
     gtk_toolbar_insert(GTK_TOOLBAR(toolbar), downloads_btn, -1);
     gtk_toolbar_insert(GTK_TOOLBAR(toolbar), history_btn, -1);
     gtk_toolbar_insert(GTK_TOOLBAR(toolbar), ext_btn, -1);
+    gtk_toolbar_insert(GTK_TOOLBAR(toolbar), bg_btn, -1);
     gtk_toolbar_insert(GTK_TOOLBAR(toolbar), separator, -1);
     gtk_toolbar_insert(GTK_TOOLBAR(toolbar), entry_item, -1);
     gtk_toolbar_insert(GTK_TOOLBAR(toolbar), about, -1);
@@ -613,6 +665,7 @@ int main(int argc, char *argv[]) {
     gtk_widget_add_accelerator(GTK_WIDGET(downloads_btn), "clicked", accel, GDK_KEY_D, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
     gtk_widget_add_accelerator(GTK_WIDGET(history_btn), "clicked", accel, GDK_KEY_H, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
     gtk_widget_add_accelerator(GTK_WIDGET(ext_btn), "clicked", accel, GDK_KEY_E, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
+    gtk_widget_add_accelerator(GTK_WIDGET(bg_btn), "clicked", accel, GDK_KEY_B, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
     web_view = WEBKIT_WEB_VIEW(webkit_web_view_new_with_context(context));
     load_extensions(webkit_web_view_get_user_content_manager(web_view));
     webkit_settings_set_enable_developer_extras(webkit_web_view_get_settings(web_view), TRUE);
@@ -637,6 +690,7 @@ int main(int argc, char *argv[]) {
     g_signal_connect(downloads_btn, "clicked", G_CALLBACK(downloads_window_show), NULL);
     g_signal_connect(history_btn, "clicked", G_CALLBACK(show_search_history), NULL);
     g_signal_connect(ext_btn, "clicked", G_CALLBACK(open_extensions_page), NULL);
+    g_signal_connect(bg_btn, "clicked", G_CALLBACK(choose_background), NULL);
     g_signal_connect(about, "clicked", G_CALLBACK(show_about), window);
     g_signal_connect(url_entry, "activate", G_CALLBACK(on_url_activate), NULL);
     g_signal_connect(web_view, "load-changed", G_CALLBACK(load_changed), NULL);
@@ -663,6 +717,8 @@ int main(int argc, char *argv[]) {
 
     g_free(data_dir);
     g_free(cache_dir);
+    g_free(bg_image_path);
+    g_free(background_file);
     g_object_unref(manager);
     g_object_unref(context);
     return 0;

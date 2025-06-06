@@ -53,6 +53,8 @@ Downloads are saved to your standard `~/Downloads` directory and you can view
 active transfers with the **Downloads** button. Search queries entered in the
 address bar are kept in memory for the current session and accessible via the
 **History** button.
+You can personalize the start page with the **Background** button (Ctrl+B),
+which lets you choose an image to use behind the home page tiles.
 
 ## Updating
 
