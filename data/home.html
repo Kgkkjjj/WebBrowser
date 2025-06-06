@@ -6,6 +6,9 @@
     <style>
         body { font-family: sans-serif; background: #e9ecef; margin: 0; }
         header { background: #343a40; color: #fff; padding: 20px; text-align: center; }
+        nav { background: #495057; text-align: center; }
+        nav a { display: inline-block; padding: 10px 15px; color: #fff; text-decoration: none; }
+        nav a:hover { background: #6c757d; }
         #search { margin: 40px auto; text-align: center; }
         #search input[type="text"] {
             width: 60%;
@@ -15,13 +18,14 @@
             border: 1px solid #ccc;
             border-radius: 4px;
         }
-        #links { display: flex; flex-wrap: wrap; justify-content: center; margin-bottom: 40px; }
+        section { padding: 20px; max-width: 960px; margin: auto; }
+        #tiles { display: flex; flex-wrap: wrap; justify-content: center; }
         .tile {
             background: #fff;
             border-radius: 8px;
             box-shadow: 0 2px 5px rgba(0,0,0,0.2);
             margin: 10px;
-            width: 150px;
+            width: 180px;
             padding: 20px;
             text-align: center;
         }
@@ -30,21 +34,28 @@
             color: #333;
             font-weight: bold;
         }
+        footer { background: #343a40; color: #fff; text-align: center; padding: 10px; margin-top: 40px; }
     </style>
 </head>
 <body>
     <header><h1>Welcome to OpenB</h1></header>
+    <nav>
+        <a href="home.html">Home</a>
+        <a href="downloads.html">Downloads</a>
+        <a href="news.html">News</a>
+        <a href="devtools.html">DevTools</a>
+    </nav>
     <div id="search">
         <form action="https://duckduckgo.com/" method="GET">
             <input type="text" name="q" placeholder="Search the web">
         </form>
     </div>
-    <section id="links">
-        <div class="tile"><a href="downloads.html">Downloads</a></div>
-        <div class="tile"><a href="news.html">News</a></div>
-        <div class="tile"><a href="devtools.html">Dev Tools</a></div>
-        <div class="tile"><a href="https://github.com">GitHub</a></div>
+    <section id="tiles">
+        <div class="tile"><a href="https://github.com/Kgkkjjj/WebBrowser/releases">Latest Builds</a></div>
+        <div class="tile"><a href="https://github.com/Kgkkjjj/WebBrowser">Source Code</a></div>
         <div class="tile"><a href="https://www.wikipedia.org">Wikipedia</a></div>
+        <div class="tile"><a href="https://github.com">GitHub</a></div>
     </section>
+    <footer>OpenB &copy; 2025</footer>
 </body>
 </html>

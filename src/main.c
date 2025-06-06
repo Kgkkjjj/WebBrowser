@@ -9,6 +9,7 @@ static GtkWidget *status_label;
 static const char *program_path;
 static GtkWidget *main_window;
 static gboolean inspector_visible = FALSE;
+static gdouble zoom_level = 1.0;
 
 static gchar *home_file_uri = NULL;
 
@@ -157,6 +158,29 @@ static void toggle_inspector(GtkWidget *widget, gpointer data) {
     }
 }
 
+static void view_source(GtkWidget *widget, gpointer data) {
+    const gchar *uri = webkit_web_view_get_uri(web_view);
+    if (uri && g_str_has_prefix(uri, "view-source:"))
+        return;
+    if (uri) {
+        gchar *src = g_strconcat("view-source:", uri, NULL);
+        webkit_web_view_load_uri(web_view, src);
+        g_free(src);
+    }
+}
+
+static void zoom_in(GtkWidget *widget, gpointer data) {
+    zoom_level += 0.1;
+    webkit_web_view_set_zoom_level(web_view, zoom_level);
+}
+
+static void zoom_out(GtkWidget *widget, gpointer data) {
+    zoom_level -= 0.1;
+    if (zoom_level < 0.5)
+        zoom_level = 0.5;
+    webkit_web_view_set_zoom_level(web_view, zoom_level);
+}
+
 static gboolean perform_update(void) {
     if (!g_find_program_in_path("git") || !g_find_program_in_path("make")) {
         GtkWidget *err = gtk_message_dialog_new(GTK_WINDOW(main_window),
@@ -289,6 +313,12 @@ int main(int argc, char *argv[]) {
     GtkWidget *inspector_icon = gtk_image_new_from_icon_name("applications-development", GTK_ICON_SIZE_LARGE_TOOLBAR);
     gtk_tool_button_set_icon_widget(GTK_TOOL_BUTTON(inspector_btn), inspector_icon);
     gtk_widget_show(inspector_icon);
+    GtkToolItem *viewsrc_btn = gtk_tool_button_new(NULL, "View Source");
+    GtkWidget *viewsrc_icon = gtk_image_new_from_icon_name("text-x-generic", GTK_ICON_SIZE_LARGE_TOOLBAR);
+    gtk_tool_button_set_icon_widget(GTK_TOOL_BUTTON(viewsrc_btn), viewsrc_icon);
+    gtk_widget_show(viewsrc_icon);
+    GtkToolItem *zoom_in_btn = gtk_tool_button_new_from_stock(GTK_STOCK_ZOOM_IN);
+    GtkToolItem *zoom_out_btn = gtk_tool_button_new_from_stock(GTK_STOCK_ZOOM_OUT);
     GtkToolItem *about = gtk_tool_button_new_from_stock(GTK_STOCK_ABOUT);
     GtkToolItem *separator = gtk_separator_tool_item_new();
     GtkWidget *entry_widget = gtk_entry_new();
@@ -305,6 +335,9 @@ int main(int argc, char *argv[]) {
     gtk_toolbar_insert(GTK_TOOLBAR(toolbar), new_window, -1);
     gtk_toolbar_insert(GTK_TOOLBAR(toolbar), update_btn, -1);
     gtk_toolbar_insert(GTK_TOOLBAR(toolbar), inspector_btn, -1);
+    gtk_toolbar_insert(GTK_TOOLBAR(toolbar), viewsrc_btn, -1);
+    gtk_toolbar_insert(GTK_TOOLBAR(toolbar), zoom_in_btn, -1);
+    gtk_toolbar_insert(GTK_TOOLBAR(toolbar), zoom_out_btn, -1);
     gtk_toolbar_insert(GTK_TOOLBAR(toolbar), separator, -1);
     gtk_toolbar_insert(GTK_TOOLBAR(toolbar), entry_item, -1);
     gtk_toolbar_insert(GTK_TOOLBAR(toolbar), about, -1);
@@ -313,6 +346,9 @@ int main(int argc, char *argv[]) {
     gtk_widget_add_accelerator(GTK_WIDGET(home), "clicked", accel, GDK_KEY_F6, 0, GTK_ACCEL_VISIBLE);
     gtk_widget_add_accelerator(GTK_WIDGET(new_window), "clicked", accel, GDK_KEY_N, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
     gtk_widget_add_accelerator(GTK_WIDGET(inspector_btn), "clicked", accel, GDK_KEY_F12, 0, GTK_ACCEL_VISIBLE);
+    gtk_widget_add_accelerator(GTK_WIDGET(viewsrc_btn), "clicked", accel, GDK_KEY_U, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
+    gtk_widget_add_accelerator(GTK_WIDGET(zoom_in_btn), "clicked", accel, GDK_KEY_plus, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
+    gtk_widget_add_accelerator(GTK_WIDGET(zoom_out_btn), "clicked", accel, GDK_KEY_minus, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
     web_view = WEBKIT_WEB_VIEW(webkit_web_view_new_with_context(context));
     webkit_settings_set_enable_developer_extras(webkit_web_view_get_settings(web_view), TRUE);
     g_signal_connect(back, "clicked", G_CALLBACK(navigate_back), NULL);
@@ -323,6 +359,9 @@ int main(int argc, char *argv[]) {
     g_signal_connect(new_window, "clicked", G_CALLBACK(on_new_window), NULL);
     g_signal_connect(update_btn, "clicked", G_CALLBACK(check_for_updates), NULL);
     g_signal_connect(inspector_btn, "clicked", G_CALLBACK(toggle_inspector), NULL);
+    g_signal_connect(viewsrc_btn, "clicked", G_CALLBACK(view_source), NULL);
+    g_signal_connect(zoom_in_btn, "clicked", G_CALLBACK(zoom_in), NULL);
+    g_signal_connect(zoom_out_btn, "clicked", G_CALLBACK(zoom_out), NULL);
     g_signal_connect(about, "clicked", G_CALLBACK(show_about), window);
     g_signal_connect(url_entry, "activate", G_CALLBACK(on_url_activate), NULL);
     g_signal_connect(web_view, "load-changed", G_CALLBACK(load_changed), NULL);

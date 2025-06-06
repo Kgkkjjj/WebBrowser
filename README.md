@@ -33,13 +33,14 @@ Run the compiled binary:
 ./openb
 ```
 
-The browser opens on a home page defined in `data/home.html`. It now sports a
-cleaner layout with a larger search box and flexible link tiles linking to
-`downloads.html`, `news.html` and `devtools.html`. When installed via the net installer, the
-entire `data` folder is copied to `/usr/local/share/openb` so these pages work
-even when you run the browser outside the source tree. Use the address bar to
-enter a URL or a search query. The toolbar offers back, forward, reload, stop,
-home and info buttons as well as an **Update** and **DevTools** button. The
+The browser opens on a home page defined in `data/home.html`. It now features a
+navigation bar linking to `downloads.html`, `news.html` and `devtools.html`, a
+larger search box and modern tile layout. When installed via the net installer,
+the entire `data` folder is copied to `/usr/local/share/openb` so these pages
+work even when you run the browser outside the source tree. Use the address bar
+to enter a URL or a search query. The toolbar offers back, forward, reload,
+stop, home and info buttons as well as **Update**, **DevTools**, **Zoom** and
+**View Source** controls. The
 **Info** button now opens a full about dialog with details and a link to the
 project website. A status bar at the bottom displays page load progress and link
 targets.
@@ -77,5 +78,7 @@ dependencies for GTK and WebKit2GTK are installed on your system.
 OpenB ships with an integrated Web Inspector for debugging web pages. Click the
 **DevTools** button on the toolbar or press **F12** to toggle the inspector for
 the current page. This allows you to inspect HTML, CSS and JavaScript just like
-in other modern browsers.
+in other modern browsers. The toolbar also provides **View Source** (Ctrl+U) to
+see a page's raw HTML and **Zoom** controls (Ctrl++ / Ctrl+-) to adjust the
+scale of web content.
 
