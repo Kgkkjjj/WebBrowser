@@ -46,7 +46,8 @@ and open the Extensions page. The interface now sports a more modern look with
 a gradient header and card-style tiles on the home page. The
 **Info** button now opens a full about dialog with details and a link to the
 project website. A status bar at the bottom displays page load progress and link
-targets.
+targets. Every toolbar button shows text alongside its icon so new users can
+quickly learn each function.
 
 OpenB automatically sizes the main window to about 90% of the primary monitor so
 it fits comfortably on different screens.
