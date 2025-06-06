@@ -54,6 +54,8 @@ if [ $(id -u) -ne 0 ]; then
         sudo cp openb "$INSTALL_DIR/" || { echo "Install failed" >&2; exit 1; }
         sudo mkdir -p "$SHARE_DIR"
         sudo cp -r data/* "$SHARE_DIR/" || { echo "Data install failed" >&2; exit 1; }
+        sudo mkdir -p "$SHARE_DIR/extensions"
+        sudo cp -r extensions/* "$SHARE_DIR/extensions/" 2>/dev/null || true
     else
         echo "Run this script as root to install the binary." >&2
         exit 1
@@ -62,6 +64,8 @@ else
     cp openb "$INSTALL_DIR/" || { echo "Install failed" >&2; exit 1; }
     mkdir -p "$SHARE_DIR"
     cp -r data/* "$SHARE_DIR/" || { echo "Data install failed" >&2; exit 1; }
+    mkdir -p "$SHARE_DIR/extensions"
+    cp -r extensions/* "$SHARE_DIR/extensions/" 2>/dev/null || true
 fi
 
 echo "Installation complete. You can run the browser with 'openb'."

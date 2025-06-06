@@ -40,13 +40,19 @@ the entire `data` folder is copied to `/usr/local/share/openb` so these pages
 work even when you run the browser outside the source tree. Use the address bar
 to enter a URL or a search query. The toolbar offers back, forward, reload,
 stop, home and info buttons as well as **Update**, **DevTools**, **Zoom** and
-**View Source** controls. The
+**View Source** controls. Additional buttons allow you to toggle JavaScript,
+clear the cache, capture a screenshot, view downloads, inspect search history
+and open the Extensions page. The
 **Info** button now opens a full about dialog with details and a link to the
 project website. A status bar at the bottom displays page load progress and link
 targets.
 
 OpenB stores persistent data in `~/.local/share/openb` and caches pages under
 `~/.cache/openb` for faster loading.
+Downloads are saved to your standard `~/Downloads` directory and you can view
+active transfers with the **Downloads** button. Search queries entered in the
+address bar are kept in memory for the current session and accessible via the
+**History** button.
 
 ## Updating
 
@@ -62,7 +68,9 @@ A script `net_installer.sh` is provided for installing OpenB directly from the
 internet. It performs a shallow clone of this repository, builds the browser and
 installs the `openb` binary to `/usr/local/bin`. The entire `data`
 directory is copied to `/usr/local/share/openb` so the browser can load
-the start page even when run outside the source tree.
+the start page even when run outside the source tree. Any files in the
+`extensions` directory are installed to `/usr/local/share/openb/extensions` so
+custom scripts work system-wide.
 
 Run it with:
 
@@ -75,10 +83,17 @@ dependencies for GTK and WebKit2GTK are installed on your system.
 
 ## Developer Tools
 
-OpenB ships with an integrated Web Inspector for debugging web pages. Click the
-**DevTools** button on the toolbar or press **F12** to toggle the inspector for
-the current page. This allows you to inspect HTML, CSS and JavaScript just like
-in other modern browsers. The toolbar also provides **View Source** (Ctrl+U) to
-see a page's raw HTML and **Zoom** controls (Ctrl++ / Ctrl+-) to adjust the
-scale of web content.
+OpenB ships with several tools for debugging web pages:
+
+- **Web Inspector** (F12)
+- **View Source** (Ctrl+U)
+- **Zoom controls** (Ctrl++ / Ctrl+-)
+- **Toggle JavaScript** (Ctrl+J)
+- **Clear Cache** (F9)
+- **Take Screenshot** (Ctrl+P)
+- **Manage Extensions** (Ctrl+E)
+
+Extensions are simple JavaScript files placed in `extensions/`. They are
+injected into every page when the browser starts. Use the **Extensions** button
+to open the info page.
 

@@ -10,6 +10,51 @@ static const char *program_path;
 static GtkWidget *main_window;
 static gboolean inspector_visible = FALSE;
 static gdouble zoom_level = 1.0;
+static gboolean js_enabled = TRUE;
+
+typedef struct DownloadRow {
+    GtkWidget *row;
+    GtkWidget *bar;
+} DownloadRow;
+
+static GtkWidget *downloads_window = NULL;
+static GtkWidget *downloads_list = NULL;
+
+static GSList *search_history = NULL;
+
+static void load_extensions(WebKitUserContentManager *manager) {
+    const gchar *dirs[] = {
+        "./extensions",
+        "/usr/local/share/openb/extensions",
+        NULL
+    };
+    for (int i = 0; dirs[i]; i++) {
+        GDir *d = g_dir_open(dirs[i], 0, NULL);
+        if (!d)
+            continue;
+        const gchar *name;
+        while ((name = g_dir_read_name(d))) {
+            if (!g_str_has_suffix(name, ".js"))
+                continue;
+            gchar *path = g_build_filename(dirs[i], name, NULL);
+            gchar *content = NULL;
+            g_file_get_contents(path, &content, NULL, NULL);
+            if (content) {
+                WebKitUserScript *script = webkit_user_script_new(
+                    content,
+                    WEBKIT_USER_CONTENT_INJECT_ALL_FRAMES,
+                    WEBKIT_USER_SCRIPT_INJECT_AT_DOCUMENT_START,
+                    NULL,
+                    NULL);
+                webkit_user_content_manager_add_script(manager, script);
+                webkit_user_script_unref(script);
+                g_free(content);
+            }
+            g_free(path);
+        }
+        g_dir_close(d);
+    }
+}
 
 static gchar *home_file_uri = NULL;
 
@@ -77,6 +122,7 @@ static void on_url_activate(GtkEntry *entry, gpointer user_data) {
         gchar *escaped = g_uri_escape_string(text, NULL, TRUE);
         uri = g_strdup_printf("https://duckduckgo.com/?q=%s", escaped);
         g_free(escaped);
+        search_history = g_slist_prepend(search_history, g_strdup(text));
     }
 
     webkit_web_view_load_uri(web_view, uri);
@@ -179,6 +225,120 @@ static void zoom_out(GtkWidget *widget, gpointer data) {
     if (zoom_level < 0.5)
         zoom_level = 0.5;
     webkit_web_view_set_zoom_level(web_view, zoom_level);
+}
+
+static void toggle_javascript(GtkWidget *widget, gpointer data) {
+    js_enabled = !js_enabled;
+    webkit_settings_set_enable_javascript(webkit_web_view_get_settings(web_view), js_enabled);
+    const gchar *msg = js_enabled ? "JavaScript Enabled" : "JavaScript Disabled";
+    gtk_label_set_text(GTK_LABEL(status_label), msg);
+}
+
+static void clear_cache(GtkWidget *widget, gpointer data) {
+    WebKitWebContext *ctx = webkit_web_view_get_context(web_view);
+    webkit_web_context_clear_cache(ctx);
+    gtk_label_set_text(GTK_LABEL(status_label), "Cache Cleared");
+}
+
+static void screenshot_page(GtkWidget *widget, gpointer data) {
+    GdkWindow *win = gtk_widget_get_window(GTK_WIDGET(web_view));
+    if (!win)
+        return;
+    gint w = gtk_widget_get_allocated_width(GTK_WIDGET(web_view));
+    gint h = gtk_widget_get_allocated_height(GTK_WIDGET(web_view));
+    GdkPixbuf *pb = gdk_pixbuf_get_from_window(win, 0, 0, w, h);
+    if (!pb)
+        return;
+    gchar *fname = g_strdup_printf("%s/openb-screenshot.png", g_get_tmp_dir());
+    gdk_pixbuf_save(pb, fname, "png", NULL, NULL);
+    g_object_unref(pb);
+    GtkWidget *d = gtk_message_dialog_new(GTK_WINDOW(main_window),
+        GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT,
+        GTK_MESSAGE_INFO,
+        GTK_BUTTONS_CLOSE,
+        "Screenshot saved to %s", fname);
+    gtk_dialog_run(GTK_DIALOG(d));
+    gtk_widget_destroy(d);
+    g_free(fname);
+}
+
+static void show_search_history(GtkWidget *widget, gpointer data) {
+    GtkWidget *dialog = gtk_dialog_new_with_buttons("Search History",
+        GTK_WINDOW(main_window), GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT,
+        "Close", GTK_RESPONSE_CLOSE, NULL);
+    GtkWidget *box = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
+    GtkWidget *list = gtk_list_box_new();
+    for (GSList *l = search_history; l; l = l->next) {
+        GtkWidget *row = gtk_label_new((const gchar *)l->data);
+        gtk_list_box_insert(GTK_LIST_BOX(list), row, -1);
+    }
+    gtk_container_add(GTK_CONTAINER(box), list);
+    gtk_widget_show_all(dialog);
+    gtk_dialog_run(GTK_DIALOG(dialog));
+    gtk_widget_destroy(dialog);
+}
+
+static void downloads_window_show(void) {
+    if (!downloads_window) {
+        downloads_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+        gtk_window_set_title(GTK_WINDOW(downloads_window), "Downloads");
+        gtk_window_set_default_size(GTK_WINDOW(downloads_window), 400, 300);
+        downloads_list = gtk_list_box_new();
+        gtk_container_add(GTK_CONTAINER(downloads_window), downloads_list);
+    }
+    gtk_widget_show_all(downloads_window);
+}
+
+static void download_progress(WebKitDownload *download, GParamSpec *pspec, gpointer user_data) {
+    GtkProgressBar *bar = GTK_PROGRESS_BAR(user_data);
+    gtk_progress_bar_set_fraction(bar, webkit_download_get_estimated_progress(download));
+}
+
+static void download_finished(WebKitDownload *download, gpointer user_data) {
+    GtkProgressBar *bar = GTK_PROGRESS_BAR(user_data);
+    gtk_progress_bar_set_fraction(bar, 1.0);
+}
+
+static void download_started(WebKitWebContext *ctx, WebKitDownload *download, gpointer user_data) {
+    downloads_window_show();
+    const char *uri = webkit_uri_request_get_uri(webkit_download_get_request(download));
+    GtkWidget *row = gtk_box_new(GTK_ORIENTATION_VERTICAL, 2);
+    GtkWidget *label = gtk_label_new(uri);
+    GtkWidget *bar = gtk_progress_bar_new();
+    gtk_box_pack_start(GTK_BOX(row), label, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(row), bar, FALSE, FALSE, 0);
+    gtk_list_box_insert(GTK_LIST_BOX(downloads_list), row, -1);
+    gtk_widget_show_all(row);
+    g_signal_connect(download, "notify::estimated-progress", G_CALLBACK(download_progress), bar);
+    g_signal_connect(download, "finished", G_CALLBACK(download_finished), bar);
+
+    const gchar *dest = webkit_download_get_destination(download);
+    if (!dest) {
+        const gchar *req = webkit_uri_request_get_uri(webkit_download_get_request(download));
+        gchar *basename = g_path_get_basename(req);
+        gchar *path = g_build_filename(g_get_user_special_dir(G_USER_DIRECTORY_DOWNLOAD), basename, NULL);
+        gchar *uri_dest = g_strdup_printf("file://%s", path);
+        webkit_download_set_destination(download, uri_dest);
+        g_free(uri_dest);
+        g_free(path);
+        g_free(basename);
+    }
+}
+
+static void open_extensions_page(GtkWidget *widget, gpointer data) {
+    gchar *cwd = g_get_current_dir();
+    gchar *path = g_build_filename(cwd, "data", "extensions.html", NULL);
+    g_free(cwd);
+    if (!g_file_test(path, G_FILE_TEST_EXISTS)) {
+        g_free(path);
+        path = g_build_filename("/usr/local/share/openb", "extensions.html", NULL);
+    }
+    if (g_file_test(path, G_FILE_TEST_EXISTS)) {
+        gchar *uri = g_strdup_printf("file://%s", path);
+        webkit_web_view_load_uri(web_view, uri);
+        g_free(uri);
+    }
+    g_free(path);
 }
 
 static gboolean perform_update(void) {
@@ -288,6 +448,7 @@ int main(int argc, char *argv[]) {
 
     WebKitWebContext *context = webkit_web_context_new_with_website_data_manager(manager);
     webkit_web_context_set_cache_model(context, WEBKIT_CACHE_MODEL_DOCUMENT_BROWSER);
+    g_signal_connect(context, "download-started", G_CALLBACK(download_started), NULL);
 
     GtkWidget *window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
     main_window = window;
@@ -319,6 +480,30 @@ int main(int argc, char *argv[]) {
     gtk_widget_show(viewsrc_icon);
     GtkToolItem *zoom_in_btn = gtk_tool_button_new_from_stock(GTK_STOCK_ZOOM_IN);
     GtkToolItem *zoom_out_btn = gtk_tool_button_new_from_stock(GTK_STOCK_ZOOM_OUT);
+    GtkToolItem *js_btn = gtk_tool_button_new(NULL, "JS");
+    GtkWidget *js_icon = gtk_image_new_from_icon_name("applications-system", GTK_ICON_SIZE_LARGE_TOOLBAR);
+    gtk_tool_button_set_icon_widget(GTK_TOOL_BUTTON(js_btn), js_icon);
+    gtk_widget_show(js_icon);
+    GtkToolItem *cache_btn = gtk_tool_button_new(NULL, "ClearCache");
+    GtkWidget *cache_icon = gtk_image_new_from_icon_name("edit-clear", GTK_ICON_SIZE_LARGE_TOOLBAR);
+    gtk_tool_button_set_icon_widget(GTK_TOOL_BUTTON(cache_btn), cache_icon);
+    gtk_widget_show(cache_icon);
+    GtkToolItem *shot_btn = gtk_tool_button_new(NULL, "Screenshot");
+    GtkWidget *shot_icon = gtk_image_new_from_icon_name("camera-photo", GTK_ICON_SIZE_LARGE_TOOLBAR);
+    gtk_tool_button_set_icon_widget(GTK_TOOL_BUTTON(shot_btn), shot_icon);
+    gtk_widget_show(shot_icon);
+    GtkToolItem *downloads_btn = gtk_tool_button_new(NULL, "Downloads");
+    GtkWidget *downloads_icon = gtk_image_new_from_icon_name("folder-download", GTK_ICON_SIZE_LARGE_TOOLBAR);
+    gtk_tool_button_set_icon_widget(GTK_TOOL_BUTTON(downloads_btn), downloads_icon);
+    gtk_widget_show(downloads_icon);
+    GtkToolItem *history_btn = gtk_tool_button_new(NULL, "History");
+    GtkWidget *history_icon = gtk_image_new_from_icon_name("document-open-recent", GTK_ICON_SIZE_LARGE_TOOLBAR);
+    gtk_tool_button_set_icon_widget(GTK_TOOL_BUTTON(history_btn), history_icon);
+    gtk_widget_show(history_icon);
+    GtkToolItem *ext_btn = gtk_tool_button_new(NULL, "Extensions");
+    GtkWidget *ext_icon = gtk_image_new_from_icon_name("preferences-system", GTK_ICON_SIZE_LARGE_TOOLBAR);
+    gtk_tool_button_set_icon_widget(GTK_TOOL_BUTTON(ext_btn), ext_icon);
+    gtk_widget_show(ext_icon);
     GtkToolItem *about = gtk_tool_button_new_from_stock(GTK_STOCK_ABOUT);
     GtkToolItem *separator = gtk_separator_tool_item_new();
     GtkWidget *entry_widget = gtk_entry_new();
@@ -338,6 +523,12 @@ int main(int argc, char *argv[]) {
     gtk_toolbar_insert(GTK_TOOLBAR(toolbar), viewsrc_btn, -1);
     gtk_toolbar_insert(GTK_TOOLBAR(toolbar), zoom_in_btn, -1);
     gtk_toolbar_insert(GTK_TOOLBAR(toolbar), zoom_out_btn, -1);
+    gtk_toolbar_insert(GTK_TOOLBAR(toolbar), js_btn, -1);
+    gtk_toolbar_insert(GTK_TOOLBAR(toolbar), cache_btn, -1);
+    gtk_toolbar_insert(GTK_TOOLBAR(toolbar), shot_btn, -1);
+    gtk_toolbar_insert(GTK_TOOLBAR(toolbar), downloads_btn, -1);
+    gtk_toolbar_insert(GTK_TOOLBAR(toolbar), history_btn, -1);
+    gtk_toolbar_insert(GTK_TOOLBAR(toolbar), ext_btn, -1);
     gtk_toolbar_insert(GTK_TOOLBAR(toolbar), separator, -1);
     gtk_toolbar_insert(GTK_TOOLBAR(toolbar), entry_item, -1);
     gtk_toolbar_insert(GTK_TOOLBAR(toolbar), about, -1);
@@ -349,7 +540,14 @@ int main(int argc, char *argv[]) {
     gtk_widget_add_accelerator(GTK_WIDGET(viewsrc_btn), "clicked", accel, GDK_KEY_U, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
     gtk_widget_add_accelerator(GTK_WIDGET(zoom_in_btn), "clicked", accel, GDK_KEY_plus, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
     gtk_widget_add_accelerator(GTK_WIDGET(zoom_out_btn), "clicked", accel, GDK_KEY_minus, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
+    gtk_widget_add_accelerator(GTK_WIDGET(js_btn), "clicked", accel, GDK_KEY_J, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
+    gtk_widget_add_accelerator(GTK_WIDGET(cache_btn), "clicked", accel, GDK_KEY_F9, 0, GTK_ACCEL_VISIBLE);
+    gtk_widget_add_accelerator(GTK_WIDGET(shot_btn), "clicked", accel, GDK_KEY_P, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
+    gtk_widget_add_accelerator(GTK_WIDGET(downloads_btn), "clicked", accel, GDK_KEY_D, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
+    gtk_widget_add_accelerator(GTK_WIDGET(history_btn), "clicked", accel, GDK_KEY_H, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
+    gtk_widget_add_accelerator(GTK_WIDGET(ext_btn), "clicked", accel, GDK_KEY_E, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
     web_view = WEBKIT_WEB_VIEW(webkit_web_view_new_with_context(context));
+    load_extensions(webkit_web_view_get_user_content_manager(web_view));
     webkit_settings_set_enable_developer_extras(webkit_web_view_get_settings(web_view), TRUE);
     g_signal_connect(back, "clicked", G_CALLBACK(navigate_back), NULL);
     g_signal_connect(forward, "clicked", G_CALLBACK(navigate_forward), NULL);
@@ -362,6 +560,12 @@ int main(int argc, char *argv[]) {
     g_signal_connect(viewsrc_btn, "clicked", G_CALLBACK(view_source), NULL);
     g_signal_connect(zoom_in_btn, "clicked", G_CALLBACK(zoom_in), NULL);
     g_signal_connect(zoom_out_btn, "clicked", G_CALLBACK(zoom_out), NULL);
+    g_signal_connect(js_btn, "clicked", G_CALLBACK(toggle_javascript), NULL);
+    g_signal_connect(cache_btn, "clicked", G_CALLBACK(clear_cache), NULL);
+    g_signal_connect(shot_btn, "clicked", G_CALLBACK(screenshot_page), NULL);
+    g_signal_connect(downloads_btn, "clicked", G_CALLBACK(downloads_window_show), NULL);
+    g_signal_connect(history_btn, "clicked", G_CALLBACK(show_search_history), NULL);
+    g_signal_connect(ext_btn, "clicked", G_CALLBACK(open_extensions_page), NULL);
     g_signal_connect(about, "clicked", G_CALLBACK(show_about), window);
     g_signal_connect(url_entry, "activate", G_CALLBACK(on_url_activate), NULL);
     g_signal_connect(web_view, "load-changed", G_CALLBACK(load_changed), NULL);
