@@ -33,12 +33,12 @@ Run the compiled binary:
 ./openb
 ```
 
-The browser opens on a home page defined in `data/home.html`. It features a
-search bar and several quick links similar to the new‑tab page of Firefox.
-Feel free to edit this file to tailor the welcome screen to your needs. Use the
-address bar to enter a URL or a search query. The toolbar offers back, forward,
-reload, stop, home and info buttons. Click the **Info** button to see details
-about the browser.
+The browser opens on a home page defined in `data/home.html`. It now sports a
+cleaner layout with a larger search box and flexible link tiles. Feel free to
+customize this file to suit your preferences. Use the address bar to enter a
+URL or a search query. The toolbar offers back, forward, reload, stop, home and
+info buttons. Click the **Info** button to see details about the browser. A
+status bar at the bottom displays page load progress and link targets.
 
 OpenB stores persistent data in `~/.local/share/openb` and caches pages under
 `~/.cache/openb` for faster loading.

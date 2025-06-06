@@ -5,19 +5,36 @@
 static WebKitWebView *web_view;
 static GtkEntry *url_entry;
 static GtkWidget *progress_bar;
+static GtkWidget *status_label;
 static const char *program_path;
+static GtkWidget *main_window;
 
 static gchar *home_file_uri = NULL;
 
 static void load_home_page(void) {
     if (!home_file_uri) {
         gchar *cwd = g_get_current_dir();
+        if (!cwd)
+            return;
         gchar *path = g_build_filename(cwd, "data", "home.html", NULL);
+        g_free(cwd);
+        if (!path || !g_file_test(path, G_FILE_TEST_EXISTS)) {
+            GtkWidget *d = gtk_message_dialog_new(GTK_WINDOW(main_window),
+                GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT,
+                GTK_MESSAGE_ERROR,
+                GTK_BUTTONS_CLOSE,
+                "Home page not found:\n%s",
+                path ? path : "data/home.html");
+            gtk_dialog_run(GTK_DIALOG(d));
+            gtk_widget_destroy(d);
+            g_free(path);
+            return;
+        }
         home_file_uri = g_strdup_printf("file://%s", path);
         g_free(path);
-        g_free(cwd);
     }
-    webkit_web_view_load_uri(web_view, home_file_uri);
+    if (home_file_uri)
+        webkit_web_view_load_uri(web_view, home_file_uri);
 }
 
 static void navigate_home(GtkWidget *widget, gpointer data) {
@@ -64,6 +81,7 @@ static gboolean load_changed(WebKitWebView *view, WebKitLoadEvent event, gpointe
     if (event == WEBKIT_LOAD_STARTED) {
         gtk_widget_show(progress_bar);
         gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(progress_bar), 0.0);
+        gtk_label_set_text(GTK_LABEL(status_label), "Loading...");
     } else if (event == WEBKIT_LOAD_COMMITTED) {
         const gchar *uri = webkit_web_view_get_uri(view);
         if (home_file_uri && g_strcmp0(uri, home_file_uri) == 0)
@@ -72,6 +90,7 @@ static gboolean load_changed(WebKitWebView *view, WebKitLoadEvent event, gpointe
             gtk_entry_set_text(url_entry, uri ? uri : "");
     } else if (event == WEBKIT_LOAD_FINISHED) {
         gtk_widget_hide(progress_bar);
+        gtk_label_set_text(GTK_LABEL(status_label), "Done");
     }
     return FALSE;
 }
@@ -81,6 +100,7 @@ static void progress_changed(WebKitWebView *view, GParamSpec *pspec, gpointer da
     gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(progress_bar), progress);
     gchar *pct = g_strdup_printf("%d%%", (int)(progress * 100));
     gtk_progress_bar_set_text(GTK_PROGRESS_BAR(progress_bar), pct);
+    gtk_label_set_text(GTK_LABEL(status_label), pct);
     g_free(pct);
 }
 
@@ -89,16 +109,31 @@ static gboolean load_failed(WebKitWebView *view,
                             const gchar *uri,
                             GError *error,
                             gpointer data) {
-    GtkWidget *dialog = gtk_message_dialog_new(GTK_WINDOW(data),
+    GtkWidget *dialog = gtk_message_dialog_new(GTK_WINDOW(main_window),
         GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT,
         GTK_MESSAGE_ERROR,
-        GTK_BUTTONS_CLOSE,
+        GTK_BUTTONS_NONE,
         "Failed to load %s:\n%s",
         uri,
         error->message);
-    gtk_dialog_run(GTK_DIALOG(dialog));
+    gtk_dialog_add_button(GTK_DIALOG(dialog), "Retry", GTK_RESPONSE_YES);
+    gtk_dialog_add_button(GTK_DIALOG(dialog), "Close", GTK_RESPONSE_CLOSE);
+    gint resp = gtk_dialog_run(GTK_DIALOG(dialog));
     gtk_widget_destroy(dialog);
-    return FALSE;
+    if (resp == GTK_RESPONSE_YES)
+        webkit_web_view_reload(view);
+    return TRUE;
+}
+
+static void mouse_target_changed(WebKitWebView *view,
+                                 WebKitHitTestResult *hit,
+                                 guint modifiers,
+                                 gpointer data) {
+    const gchar *link = webkit_hit_test_result_get_link_uri(hit);
+    if (link)
+        gtk_label_set_text(GTK_LABEL(status_label), link);
+    else
+        gtk_label_set_text(GTK_LABEL(status_label), "");
 }
 
 static void on_new_window(GtkWidget *widget, gpointer data) {
@@ -121,7 +156,10 @@ static void show_about(GtkWidget *widget, gpointer data) {
 }
 
 int main(int argc, char *argv[]) {
-    gtk_init(&argc, &argv);
+    if (!gtk_init_check(&argc, &argv)) {
+        g_printerr("Failed to initialize GTK.\n");
+        return 1;
+    }
 
     program_path = argv[0];
 
@@ -136,6 +174,7 @@ int main(int argc, char *argv[]) {
     webkit_web_context_set_cache_model(context, WEBKIT_CACHE_MODEL_DOCUMENT_BROWSER);
 
     GtkWidget *window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+    main_window = window;
     gtk_window_set_default_size(GTK_WINDOW(window), 800, 600);
     gtk_window_set_title(GTK_WINDOW(window), "OpenB");
 
@@ -182,7 +221,8 @@ int main(int argc, char *argv[]) {
     g_signal_connect(url_entry, "activate", G_CALLBACK(on_url_activate), NULL);
     g_signal_connect(web_view, "load-changed", G_CALLBACK(load_changed), NULL);
     g_signal_connect(web_view, "notify::estimated-load-progress", G_CALLBACK(progress_changed), NULL);
-    g_signal_connect(web_view, "load-failed", G_CALLBACK(load_failed), window);
+    g_signal_connect(web_view, "load-failed", G_CALLBACK(load_failed), NULL);
+    g_signal_connect(web_view, "mouse-target-changed", G_CALLBACK(mouse_target_changed), NULL);
 
     gtk_box_pack_start(GTK_BOX(vbox), toolbar, FALSE, FALSE, 0);
     progress_bar = gtk_progress_bar_new();
@@ -191,6 +231,8 @@ int main(int argc, char *argv[]) {
 
     gtk_box_pack_start(GTK_BOX(vbox), GTK_WIDGET(web_view), TRUE, TRUE, 0);
     gtk_box_pack_start(GTK_BOX(vbox), progress_bar, FALSE, FALSE, 0);
+    status_label = gtk_label_new("Ready");
+    gtk_box_pack_start(GTK_BOX(vbox), status_label, FALSE, FALSE, 0);
     gtk_container_add(GTK_CONTAINER(window), vbox);
 
     g_signal_connect(window, "destroy", G_CALLBACK(gtk_main_quit), NULL);
