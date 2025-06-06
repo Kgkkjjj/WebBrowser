@@ -42,7 +42,8 @@ to enter a URL or a search query. The toolbar offers back, forward, reload,
 stop, home and info buttons as well as **Update**, **DevTools**, **Zoom** and
 **View Source** controls. Additional buttons allow you to toggle JavaScript,
 clear the cache, capture a screenshot, view downloads, inspect search history
-and open the Extensions page. The
+and open the Extensions page. The window automatically sizes to about 90% of
+your primary monitor. The
 **Info** button now opens a full about dialog with details and a link to the
 project website. A status bar at the bottom displays page load progress and link
 targets.
@@ -98,6 +99,16 @@ OpenB ships with several tools for debugging web pages:
 - **Find in Page** (Ctrl+F)
 - **Toggle Images** (Ctrl+I)
 - **Clear Cookies** (Ctrl+Shift+Del)
+- **Copy URL** (Ctrl+Shift+C)
+- **Paste & Go** (Ctrl+Shift+V)
+- **Open File** (Ctrl+O)
+- **Save Page** (Ctrl+S)
+- **Print Page** (Ctrl+Shift+P)
+- **Toggle Fullscreen** (F11)
+- **Toggle Dark Mode** (F2)
+- **Page Info** (F3)
+- **Clear History** (Ctrl+Shift+H)
+- **Clear Downloads** (Ctrl+Shift+D)
 
 Extensions are simple JavaScript files placed in `extensions/`. They are
 injected into every page when the browser starts. Use the **Extensions** button
