@@ -35,13 +35,14 @@ Run the compiled binary:
 
 The browser opens on a home page defined in `data/home.html`. It now sports a
 cleaner layout with a larger search box and flexible link tiles linking to
-`downloads.html` and `news.html`. When installed via the net installer, the
+`downloads.html`, `news.html` and `devtools.html`. When installed via the net installer, the
 entire `data` folder is copied to `/usr/local/share/openb` so these pages work
 even when you run the browser outside the source tree. Use the address bar to
 enter a URL or a search query. The toolbar offers back, forward, reload, stop,
-home and info buttons. The **Info** button now opens a full about dialog with
-details and a link to the project website. A status bar at the bottom displays
-page load progress and link targets.
+home and info buttons as well as an **Update** and **DevTools** button. The
+**Info** button now opens a full about dialog with details and a link to the
+project website. A status bar at the bottom displays page load progress and link
+targets.
 
 OpenB stores persistent data in `~/.local/share/openb` and caches pages under
 `~/.cache/openb` for faster loading.
@@ -70,4 +71,11 @@ Run it with:
 
 Root privileges are required for the installation step. Ensure the required build
 dependencies for GTK and WebKit2GTK are installed on your system.
+
+## Developer Tools
+
+OpenB ships with an integrated Web Inspector for debugging web pages. Click the
+**DevTools** button on the toolbar or press **F12** to toggle the inspector for
+the current page. This allows you to inspect HTML, CSS and JavaScript just like
+in other modern browsers.
 

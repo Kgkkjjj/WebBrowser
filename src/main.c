@@ -8,6 +8,7 @@ static GtkWidget *progress_bar;
 static GtkWidget *status_label;
 static const char *program_path;
 static GtkWidget *main_window;
+static gboolean inspector_visible = FALSE;
 
 static gchar *home_file_uri = NULL;
 
@@ -145,7 +146,29 @@ static void on_new_window(GtkWidget *widget, gpointer data) {
         g_spawn_command_line_async(program_path, NULL);
 }
 
+static void toggle_inspector(GtkWidget *widget, gpointer data) {
+    WebKitWebInspector *inspector = webkit_web_view_get_inspector(web_view);
+    if (webkit_web_inspector_get_web_view(inspector)) {
+        webkit_web_inspector_close(inspector);
+        inspector_visible = FALSE;
+    } else {
+        webkit_web_inspector_show(inspector);
+        inspector_visible = TRUE;
+    }
+}
+
 static gboolean perform_update(void) {
+    if (!g_find_program_in_path("git") || !g_find_program_in_path("make")) {
+        GtkWidget *err = gtk_message_dialog_new(GTK_WINDOW(main_window),
+            GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT,
+            GTK_MESSAGE_ERROR,
+            GTK_BUTTONS_CLOSE,
+            "git and make are required for updating.");
+        gtk_dialog_run(GTK_DIALOG(err));
+        gtk_widget_destroy(err);
+        return FALSE;
+    }
+
     if (!g_file_test(".git", G_FILE_TEST_IS_DIR)) {
         GtkWidget *err = gtk_message_dialog_new(GTK_WINDOW(main_window),
             GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT,
@@ -262,6 +285,10 @@ int main(int argc, char *argv[]) {
     GtkWidget *update_icon = gtk_image_new_from_icon_name("system-software-update", GTK_ICON_SIZE_LARGE_TOOLBAR);
     gtk_tool_button_set_icon_widget(GTK_TOOL_BUTTON(update_btn), update_icon);
     gtk_widget_show(update_icon);
+    GtkToolItem *inspector_btn = gtk_tool_button_new(NULL, "DevTools");
+    GtkWidget *inspector_icon = gtk_image_new_from_icon_name("applications-development", GTK_ICON_SIZE_LARGE_TOOLBAR);
+    gtk_tool_button_set_icon_widget(GTK_TOOL_BUTTON(inspector_btn), inspector_icon);
+    gtk_widget_show(inspector_icon);
     GtkToolItem *about = gtk_tool_button_new_from_stock(GTK_STOCK_ABOUT);
     GtkToolItem *separator = gtk_separator_tool_item_new();
     GtkWidget *entry_widget = gtk_entry_new();
@@ -277,6 +304,7 @@ int main(int argc, char *argv[]) {
     gtk_toolbar_insert(GTK_TOOLBAR(toolbar), home, -1);
     gtk_toolbar_insert(GTK_TOOLBAR(toolbar), new_window, -1);
     gtk_toolbar_insert(GTK_TOOLBAR(toolbar), update_btn, -1);
+    gtk_toolbar_insert(GTK_TOOLBAR(toolbar), inspector_btn, -1);
     gtk_toolbar_insert(GTK_TOOLBAR(toolbar), separator, -1);
     gtk_toolbar_insert(GTK_TOOLBAR(toolbar), entry_item, -1);
     gtk_toolbar_insert(GTK_TOOLBAR(toolbar), about, -1);
@@ -284,7 +312,9 @@ int main(int argc, char *argv[]) {
     gtk_widget_add_accelerator(GTK_WIDGET(reload), "clicked", accel, GDK_KEY_F5, 0, GTK_ACCEL_VISIBLE);
     gtk_widget_add_accelerator(GTK_WIDGET(home), "clicked", accel, GDK_KEY_F6, 0, GTK_ACCEL_VISIBLE);
     gtk_widget_add_accelerator(GTK_WIDGET(new_window), "clicked", accel, GDK_KEY_N, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
+    gtk_widget_add_accelerator(GTK_WIDGET(inspector_btn), "clicked", accel, GDK_KEY_F12, 0, GTK_ACCEL_VISIBLE);
     web_view = WEBKIT_WEB_VIEW(webkit_web_view_new_with_context(context));
+    webkit_settings_set_enable_developer_extras(webkit_web_view_get_settings(web_view), TRUE);
     g_signal_connect(back, "clicked", G_CALLBACK(navigate_back), NULL);
     g_signal_connect(forward, "clicked", G_CALLBACK(navigate_forward), NULL);
     g_signal_connect(reload, "clicked", G_CALLBACK(reload_page), NULL);
@@ -292,6 +322,7 @@ int main(int argc, char *argv[]) {
     g_signal_connect(home, "clicked", G_CALLBACK(navigate_home), NULL);
     g_signal_connect(new_window, "clicked", G_CALLBACK(on_new_window), NULL);
     g_signal_connect(update_btn, "clicked", G_CALLBACK(check_for_updates), NULL);
+    g_signal_connect(inspector_btn, "clicked", G_CALLBACK(toggle_inspector), NULL);
     g_signal_connect(about, "clicked", G_CALLBACK(show_about), window);
     g_signal_connect(url_entry, "activate", G_CALLBACK(on_url_activate), NULL);
     g_signal_connect(web_view, "load-changed", G_CALLBACK(load_changed), NULL);
