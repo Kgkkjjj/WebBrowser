@@ -24,8 +24,6 @@ static GtkWidget *downloads_window = NULL;
 static GtkWidget *downloads_list = NULL;
 
 static GSList *search_history = NULL;
-static gchar *background_file = NULL;
-static gchar *bg_image_path = NULL;
 
 static void load_extensions(WebKitUserContentManager *manager) {
     const gchar *dirs[] = {
@@ -148,18 +146,6 @@ static gboolean load_changed(WebKitWebView *view, WebKitLoadEvent event, gpointe
     } else if (event == WEBKIT_LOAD_FINISHED) {
         gtk_widget_hide(progress_bar);
         gtk_label_set_text(GTK_LABEL(status_label), "Done");
-        const gchar *uri = webkit_web_view_get_uri(view);
-        if (home_file_uri && bg_image_path && g_strcmp0(uri, home_file_uri) == 0) {
-            gchar *file_uri = g_filename_to_uri(bg_image_path, NULL, NULL);
-            if (file_uri) {
-                gchar *js = g_strdup_printf(
-                    "document.body.style.backgroundImage='url(\"%s\")';document.body.style.backgroundSize='cover';",
-                    file_uri);
-                webkit_web_view_run_javascript(view, js, NULL, NULL, NULL);
-                g_free(js);
-            }
-            g_free(file_uri);
-        }
         if (dark_mode) {
             webkit_web_view_run_javascript(view,
                 "document.documentElement.style.filter='invert(1) hue-rotate(180deg)';",
@@ -342,35 +328,6 @@ static void show_search_history(GtkWidget *widget, gpointer data) {
     gtk_widget_destroy(dialog);
 }
 
-static void choose_background(GtkWidget *widget, gpointer data) {
-    GtkWidget *dialog = gtk_file_chooser_dialog_new(
-        "Select Background", GTK_WINDOW(main_window),
-        GTK_FILE_CHOOSER_ACTION_OPEN,
-        "Cancel", GTK_RESPONSE_CANCEL,
-        "Open", GTK_RESPONSE_ACCEPT,
-        NULL);
-    GtkFileFilter *filter = gtk_file_filter_new();
-    gtk_file_filter_add_pixbuf_formats(filter);
-    gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(dialog), filter);
-    if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
-        gchar *fname = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog));
-        if (fname) {
-            g_free(bg_image_path);
-            bg_image_path = fname;
-            g_file_set_contents(background_file, bg_image_path, -1, NULL);
-            gchar *uri = g_filename_to_uri(bg_image_path, NULL, NULL);
-            if (uri) {
-                gchar *js = g_strdup_printf(
-                    "document.body.style.backgroundImage='url(\"%s\")';document.body.style.backgroundSize='cover';",
-                    uri);
-                webkit_web_view_run_javascript(web_view, js, NULL, NULL, NULL);
-                g_free(js);
-            }
-            g_free(uri);
-        }
-    }
-    gtk_widget_destroy(dialog);
-}
 
 static void downloads_window_show(void) {
     if (!downloads_window) {
@@ -617,6 +574,41 @@ static void toggle_fullscreen(GtkWidget *widget, gpointer data) {
     }
 }
 
+static void adjust_window_size(GtkWindow *window) {
+    GdkDisplay *display = gtk_widget_get_display(GTK_WIDGET(window));
+    if (!display)
+        display = gdk_display_get_default();
+    GdkMonitor *mon = NULL;
+    if (display) {
+        if (gtk_widget_get_window(GTK_WIDGET(window)))
+            mon = gdk_display_get_monitor_at_window(display, gtk_widget_get_window(GTK_WIDGET(window)));
+        if (!mon)
+            mon = gdk_display_get_primary_monitor(display);
+    }
+    if (mon) {
+        GdkRectangle geo;
+        gdk_monitor_get_geometry(mon, &geo);
+        gint w = geo.width * 0.9;
+        gint h = geo.height * 0.9;
+        if (w < 640) w = 640;
+        if (h < 480) h = 480;
+        gtk_window_resize(window, w, h);
+    } else {
+        gtk_window_resize(window, 800, 600);
+    }
+}
+
+static void on_monitors_changed(GdkDisplay *display, gpointer data) {
+    adjust_window_size(GTK_WINDOW(data));
+}
+
+static void on_window_realize(GtkWidget *widget, gpointer data) {
+    adjust_window_size(GTK_WINDOW(widget));
+    GdkDisplay *display = gtk_widget_get_display(widget);
+    if (display)
+        g_signal_connect(display, "monitors-changed", G_CALLBACK(on_monitors_changed), widget);
+}
+
 static void toggle_dark_mode(GtkWidget *widget, gpointer data) {
     dark_mode = !dark_mode;
     const gchar *js = dark_mode ?
@@ -664,8 +656,6 @@ int main(int argc, char *argv[]) {
     gchar *data_dir = g_build_filename(g_get_user_data_dir(), "openb", NULL);
     gchar *cache_dir = g_build_filename(g_get_user_cache_dir(), "openb", NULL);
     g_mkdir_with_parents(data_dir, 0755);
-    background_file = g_build_filename(data_dir, "background.txt", NULL);
-    g_file_get_contents(background_file, &bg_image_path, NULL, NULL);
     WebKitWebsiteDataManager *manager = webkit_website_data_manager_new(
         "base-data-directory", data_dir,
         "base-cache-directory", cache_dir,
@@ -677,21 +667,8 @@ int main(int argc, char *argv[]) {
 
     GtkWidget *window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
     main_window = window;
-    GdkDisplay *disp = gdk_display_get_default();
-    if (disp) {
-        GdkMonitor *mon = gdk_display_get_primary_monitor(disp);
-        if (mon) {
-            GdkRectangle geo;
-            gdk_monitor_get_geometry(mon, &geo);
-            gint w = geo.width * 0.9;
-            gint h = geo.height * 0.9;
-            gtk_window_set_default_size(GTK_WINDOW(window), w, h);
-        } else {
-            gtk_window_set_default_size(GTK_WINDOW(window), 800, 600);
-        }
-    } else {
-        gtk_window_set_default_size(GTK_WINDOW(window), 800, 600);
-    }
+    gtk_window_set_default_size(GTK_WINDOW(window), 800, 600);
+    g_signal_connect(window, "realize", G_CALLBACK(on_window_realize), NULL);
     gtk_window_set_title(GTK_WINDOW(window), "OpenB");
 
     GtkWidget *vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
@@ -759,10 +736,6 @@ int main(int argc, char *argv[]) {
     GtkWidget *ext_icon = gtk_image_new_from_icon_name("preferences-system", GTK_ICON_SIZE_LARGE_TOOLBAR);
     gtk_tool_button_set_icon_widget(GTK_TOOL_BUTTON(ext_btn), ext_icon);
     gtk_widget_show(ext_icon);
-    GtkToolItem *bg_btn = gtk_tool_button_new(NULL, "Background");
-    GtkWidget *bg_icon = gtk_image_new_from_icon_name("preferences-desktop-wallpaper", GTK_ICON_SIZE_LARGE_TOOLBAR);
-    gtk_tool_button_set_icon_widget(GTK_TOOL_BUTTON(bg_btn), bg_icon);
-    gtk_widget_show(bg_icon);
     GtkToolItem *copy_btn = gtk_tool_button_new(NULL, "CopyURL");
     GtkWidget *copy_icon = gtk_image_new_from_icon_name("edit-copy", GTK_ICON_SIZE_LARGE_TOOLBAR);
     gtk_tool_button_set_icon_widget(GTK_TOOL_BUTTON(copy_btn), copy_icon);
@@ -832,7 +805,6 @@ int main(int argc, char *argv[]) {
     gtk_toolbar_insert(GTK_TOOLBAR(toolbar), downloads_btn, -1);
     gtk_toolbar_insert(GTK_TOOLBAR(toolbar), history_btn, -1);
     gtk_toolbar_insert(GTK_TOOLBAR(toolbar), ext_btn, -1);
-    gtk_toolbar_insert(GTK_TOOLBAR(toolbar), bg_btn, -1);
     gtk_toolbar_insert(GTK_TOOLBAR(toolbar), copy_btn, -1);
     gtk_toolbar_insert(GTK_TOOLBAR(toolbar), paste_btn, -1);
     gtk_toolbar_insert(GTK_TOOLBAR(toolbar), open_btn, -1);
@@ -864,7 +836,6 @@ int main(int argc, char *argv[]) {
     gtk_widget_add_accelerator(GTK_WIDGET(downloads_btn), "clicked", accel, GDK_KEY_D, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
     gtk_widget_add_accelerator(GTK_WIDGET(history_btn), "clicked", accel, GDK_KEY_H, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
     gtk_widget_add_accelerator(GTK_WIDGET(ext_btn), "clicked", accel, GDK_KEY_E, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
-    gtk_widget_add_accelerator(GTK_WIDGET(bg_btn), "clicked", accel, GDK_KEY_B, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
     gtk_widget_add_accelerator(GTK_WIDGET(copy_btn), "clicked", accel, GDK_KEY_C, GDK_CONTROL_MASK | GDK_SHIFT_MASK, GTK_ACCEL_VISIBLE);
     gtk_widget_add_accelerator(GTK_WIDGET(paste_btn), "clicked", accel, GDK_KEY_V, GDK_CONTROL_MASK | GDK_SHIFT_MASK, GTK_ACCEL_VISIBLE);
     gtk_widget_add_accelerator(GTK_WIDGET(open_btn), "clicked", accel, GDK_KEY_O, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
@@ -899,7 +870,6 @@ int main(int argc, char *argv[]) {
     g_signal_connect(downloads_btn, "clicked", G_CALLBACK(downloads_window_show), NULL);
     g_signal_connect(history_btn, "clicked", G_CALLBACK(show_search_history), NULL);
     g_signal_connect(ext_btn, "clicked", G_CALLBACK(open_extensions_page), NULL);
-    g_signal_connect(bg_btn, "clicked", G_CALLBACK(choose_background), NULL);
     g_signal_connect(copy_btn, "clicked", G_CALLBACK(copy_url), NULL);
     g_signal_connect(paste_btn, "clicked", G_CALLBACK(paste_and_go), NULL);
     g_signal_connect(open_btn, "clicked", G_CALLBACK(open_file), NULL);
@@ -936,8 +906,6 @@ int main(int argc, char *argv[]) {
 
     g_free(data_dir);
     g_free(cache_dir);
-    g_free(bg_image_path);
-    g_free(background_file);
     g_object_unref(manager);
     g_object_unref(context);
     return 0;

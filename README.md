@@ -42,8 +42,8 @@ to enter a URL or a search query. The toolbar offers back, forward, reload,
 stop, home and info buttons as well as **Update**, **DevTools**, **Zoom** and
 **View Source** controls. Additional buttons allow you to toggle JavaScript,
 clear the cache, capture a screenshot, view downloads, inspect search history
-and open the Extensions page. The window automatically sizes to about 90% of
-your primary monitor. The
+and open the Extensions page. The window automatically resizes to roughly 90%
+of whichever monitor it appears on. The
 **Info** button now opens a full about dialog with details and a link to the
 project website. A status bar at the bottom displays page load progress and link
 targets.
@@ -54,8 +54,6 @@ Downloads are saved to your standard `~/Downloads` directory and you can view
 active transfers with the **Downloads** button. Search queries entered in the
 address bar are kept in memory for the current session and accessible via the
 **History** button.
-You can personalize the start page with the **Background** button (Ctrl+B),
-which lets you choose an image to use behind the home page tiles.
 
 ## Updating
 
