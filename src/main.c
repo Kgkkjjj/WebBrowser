@@ -25,6 +25,35 @@ static GtkWidget *downloads_list = NULL;
 
 static GSList *search_history = NULL;
 
+static void adjust_window_size(void) {
+    if (!main_window)
+        return;
+    GdkDisplay *display = gdk_display_get_default();
+    if (!display)
+        return;
+    GdkMonitor *mon = gdk_display_get_primary_monitor(display);
+    if (!mon)
+        mon = gdk_display_get_monitor(display, 0);
+    if (!mon)
+        return;
+    GdkRectangle geom;
+    gdk_monitor_get_geometry(mon, &geom);
+    gint w = geom.width * 0.9;
+    gint h = geom.height * 0.9;
+    gtk_window_resize(GTK_WINDOW(main_window), w, h);
+    gtk_window_move(GTK_WINDOW(main_window),
+        geom.x + (geom.width - w) / 2,
+        geom.y + (geom.height - h) / 2);
+}
+
+static void monitor_changed(GdkDisplay *display, gpointer data) {
+    adjust_window_size();
+}
+
+static void window_realized(GtkWidget *w, gpointer data) {
+    adjust_window_size();
+}
+
 static void load_extensions(WebKitUserContentManager *manager) {
     const gchar *dirs[] = {
         "./extensions",
@@ -864,6 +893,10 @@ int main(int argc, char *argv[]) {
     gtk_container_add(GTK_CONTAINER(window), vbox);
 
     g_signal_connect(window, "destroy", G_CALLBACK(gtk_main_quit), NULL);
+    g_signal_connect(window, "realize", G_CALLBACK(window_realized), NULL);
+    GdkDisplay *disp = gdk_display_get_default();
+    if (disp)
+        g_signal_connect(disp, "monitors-changed", G_CALLBACK(monitor_changed), NULL);
     load_home_page();
 
     gtk_widget_show_all(window);

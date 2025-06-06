@@ -48,6 +48,9 @@ a gradient header and card-style tiles on the home page. The
 project website. A status bar at the bottom displays page load progress and link
 targets.
 
+OpenB automatically sizes the main window to about 90% of the primary monitor so
+it fits comfortably on different screens.
+
 OpenB stores persistent data in `~/.local/share/openb` and caches pages under
 `~/.cache/openb` for faster loading.
 Downloads are saved to your standard `~/Downloads` directory and you can view
