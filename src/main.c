@@ -11,6 +11,7 @@ static GtkWidget *main_window;
 static gboolean inspector_visible = FALSE;
 static gdouble zoom_level = 1.0;
 static gboolean js_enabled = TRUE;
+static gboolean images_enabled = TRUE;
 
 typedef struct DownloadRow {
     GtkWidget *row;
@@ -227,6 +228,11 @@ static void zoom_out(GtkWidget *widget, gpointer data) {
     webkit_web_view_set_zoom_level(web_view, zoom_level);
 }
 
+static void reset_zoom(GtkWidget *widget, gpointer data) {
+    zoom_level = 1.0;
+    webkit_web_view_set_zoom_level(web_view, zoom_level);
+}
+
 static void toggle_javascript(GtkWidget *widget, gpointer data) {
     js_enabled = !js_enabled;
     webkit_settings_set_enable_javascript(webkit_web_view_get_settings(web_view), js_enabled);
@@ -238,6 +244,43 @@ static void clear_cache(GtkWidget *widget, gpointer data) {
     WebKitWebContext *ctx = webkit_web_view_get_context(web_view);
     webkit_web_context_clear_cache(ctx);
     gtk_label_set_text(GTK_LABEL(status_label), "Cache Cleared");
+}
+
+static void clear_cookies(GtkWidget *widget, gpointer data) {
+    WebKitWebContext *ctx = webkit_web_view_get_context(web_view);
+    WebKitCookieManager *cm = webkit_web_context_get_cookie_manager(ctx);
+    webkit_cookie_manager_delete_all_cookies(cm);
+    gtk_label_set_text(GTK_LABEL(status_label), "Cookies Cleared");
+}
+
+static void toggle_images(GtkWidget *widget, gpointer data) {
+    images_enabled = !images_enabled;
+    webkit_settings_set_auto_load_images(webkit_web_view_get_settings(web_view), images_enabled);
+    const gchar *msg = images_enabled ? "Images Enabled" : "Images Disabled";
+    gtk_label_set_text(GTK_LABEL(status_label), msg);
+}
+
+static void find_entry_changed(GtkEntry *entry, gpointer data) {
+    const gchar *text = gtk_entry_get_text(entry);
+    WebKitFindController *fc = webkit_web_view_get_find_controller(web_view);
+    if (text && *text)
+        webkit_find_controller_search(fc, text, WEBKIT_FIND_OPTIONS_CASE_INSENSITIVE | WEBKIT_FIND_OPTIONS_WRAP_AROUND, G_MAXUINT);
+    else
+        webkit_find_controller_search_finish(fc);
+}
+
+static void open_find_dialog(GtkWidget *widget, gpointer data) {
+    GtkWidget *dialog = gtk_dialog_new_with_buttons("Find", GTK_WINDOW(main_window),
+        GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT,
+        "Close", GTK_RESPONSE_CLOSE, NULL);
+    GtkWidget *box = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
+    GtkWidget *entry = gtk_entry_new();
+    gtk_box_pack_start(GTK_BOX(box), entry, FALSE, FALSE, 0);
+    g_signal_connect(entry, "changed", G_CALLBACK(find_entry_changed), NULL);
+    gtk_widget_show_all(dialog);
+    gtk_dialog_run(GTK_DIALOG(dialog));
+    webkit_find_controller_search_finish(webkit_web_view_get_find_controller(web_view));
+    gtk_widget_destroy(dialog);
 }
 
 static void screenshot_page(GtkWidget *widget, gpointer data) {
@@ -480,6 +523,22 @@ int main(int argc, char *argv[]) {
     gtk_widget_show(viewsrc_icon);
     GtkToolItem *zoom_in_btn = gtk_tool_button_new_from_stock(GTK_STOCK_ZOOM_IN);
     GtkToolItem *zoom_out_btn = gtk_tool_button_new_from_stock(GTK_STOCK_ZOOM_OUT);
+    GtkToolItem *reset_zoom_btn = gtk_tool_button_new(NULL, "Reset");
+    GtkWidget *reset_icon = gtk_image_new_from_icon_name("zoom-original", GTK_ICON_SIZE_LARGE_TOOLBAR);
+    gtk_tool_button_set_icon_widget(GTK_TOOL_BUTTON(reset_zoom_btn), reset_icon);
+    gtk_widget_show(reset_icon);
+    GtkToolItem *find_btn = gtk_tool_button_new(NULL, "Find");
+    GtkWidget *find_icon = gtk_image_new_from_icon_name("edit-find", GTK_ICON_SIZE_LARGE_TOOLBAR);
+    gtk_tool_button_set_icon_widget(GTK_TOOL_BUTTON(find_btn), find_icon);
+    gtk_widget_show(find_icon);
+    GtkToolItem *img_btn = gtk_tool_button_new(NULL, "Images");
+    GtkWidget *img_icon = gtk_image_new_from_icon_name("image-x-generic", GTK_ICON_SIZE_LARGE_TOOLBAR);
+    gtk_tool_button_set_icon_widget(GTK_TOOL_BUTTON(img_btn), img_icon);
+    gtk_widget_show(img_icon);
+    GtkToolItem *cookies_btn = gtk_tool_button_new(NULL, "Cookies");
+    GtkWidget *cookie_icon = gtk_image_new_from_icon_name("edit-clear", GTK_ICON_SIZE_LARGE_TOOLBAR);
+    gtk_tool_button_set_icon_widget(GTK_TOOL_BUTTON(cookies_btn), cookie_icon);
+    gtk_widget_show(cookie_icon);
     GtkToolItem *js_btn = gtk_tool_button_new(NULL, "JS");
     GtkWidget *js_icon = gtk_image_new_from_icon_name("applications-system", GTK_ICON_SIZE_LARGE_TOOLBAR);
     gtk_tool_button_set_icon_widget(GTK_TOOL_BUTTON(js_btn), js_icon);
@@ -523,6 +582,10 @@ int main(int argc, char *argv[]) {
     gtk_toolbar_insert(GTK_TOOLBAR(toolbar), viewsrc_btn, -1);
     gtk_toolbar_insert(GTK_TOOLBAR(toolbar), zoom_in_btn, -1);
     gtk_toolbar_insert(GTK_TOOLBAR(toolbar), zoom_out_btn, -1);
+    gtk_toolbar_insert(GTK_TOOLBAR(toolbar), reset_zoom_btn, -1);
+    gtk_toolbar_insert(GTK_TOOLBAR(toolbar), find_btn, -1);
+    gtk_toolbar_insert(GTK_TOOLBAR(toolbar), img_btn, -1);
+    gtk_toolbar_insert(GTK_TOOLBAR(toolbar), cookies_btn, -1);
     gtk_toolbar_insert(GTK_TOOLBAR(toolbar), js_btn, -1);
     gtk_toolbar_insert(GTK_TOOLBAR(toolbar), cache_btn, -1);
     gtk_toolbar_insert(GTK_TOOLBAR(toolbar), shot_btn, -1);
@@ -540,6 +603,10 @@ int main(int argc, char *argv[]) {
     gtk_widget_add_accelerator(GTK_WIDGET(viewsrc_btn), "clicked", accel, GDK_KEY_U, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
     gtk_widget_add_accelerator(GTK_WIDGET(zoom_in_btn), "clicked", accel, GDK_KEY_plus, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
     gtk_widget_add_accelerator(GTK_WIDGET(zoom_out_btn), "clicked", accel, GDK_KEY_minus, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
+    gtk_widget_add_accelerator(GTK_WIDGET(reset_zoom_btn), "clicked", accel, GDK_KEY_0, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
+    gtk_widget_add_accelerator(GTK_WIDGET(find_btn), "clicked", accel, GDK_KEY_f, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
+    gtk_widget_add_accelerator(GTK_WIDGET(img_btn), "clicked", accel, GDK_KEY_i, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
+    gtk_widget_add_accelerator(GTK_WIDGET(cookies_btn), "clicked", accel, GDK_KEY_Delete, GDK_CONTROL_MASK | GDK_SHIFT_MASK, GTK_ACCEL_VISIBLE);
     gtk_widget_add_accelerator(GTK_WIDGET(js_btn), "clicked", accel, GDK_KEY_J, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
     gtk_widget_add_accelerator(GTK_WIDGET(cache_btn), "clicked", accel, GDK_KEY_F9, 0, GTK_ACCEL_VISIBLE);
     gtk_widget_add_accelerator(GTK_WIDGET(shot_btn), "clicked", accel, GDK_KEY_P, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
@@ -560,6 +627,10 @@ int main(int argc, char *argv[]) {
     g_signal_connect(viewsrc_btn, "clicked", G_CALLBACK(view_source), NULL);
     g_signal_connect(zoom_in_btn, "clicked", G_CALLBACK(zoom_in), NULL);
     g_signal_connect(zoom_out_btn, "clicked", G_CALLBACK(zoom_out), NULL);
+    g_signal_connect(reset_zoom_btn, "clicked", G_CALLBACK(reset_zoom), NULL);
+    g_signal_connect(find_btn, "clicked", G_CALLBACK(open_find_dialog), NULL);
+    g_signal_connect(img_btn, "clicked", G_CALLBACK(toggle_images), NULL);
+    g_signal_connect(cookies_btn, "clicked", G_CALLBACK(clear_cookies), NULL);
     g_signal_connect(js_btn, "clicked", G_CALLBACK(toggle_javascript), NULL);
     g_signal_connect(cache_btn, "clicked", G_CALLBACK(clear_cache), NULL);
     g_signal_connect(shot_btn, "clicked", G_CALLBACK(screenshot_page), NULL);

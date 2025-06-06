@@ -92,6 +92,10 @@ OpenB ships with several tools for debugging web pages:
 - **Clear Cache** (F9)
 - **Take Screenshot** (Ctrl+P)
 - **Manage Extensions** (Ctrl+E)
+- **Reset Zoom** (Ctrl+0)
+- **Find in Page** (Ctrl+F)
+- **Toggle Images** (Ctrl+I)
+- **Clear Cookies** (Ctrl+Shift+Del)
 
 Extensions are simple JavaScript files placed in `extensions/`. They are
 injected into every page when the browser starts. Use the **Extensions** button
