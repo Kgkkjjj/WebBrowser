@@ -1,23 +1,33 @@
 #!/bin/sh
 # Net Installer for OpenB Web Browser
 # This script clones the OpenB source from the internet,
-# builds it and installs the binary to /usr/local/bin.
+# builds it and installs the browser. The data directory
+# is copied so the home page works when running the
+# installed binary.
 
 set -e
 
 REPO_URL="https://github.com/Kgkkjjj/WebBrowser.git"
 BRANCH="codex/build-web-browser-with-gtk-3-gui"
 INSTALL_DIR="/usr/local/bin"
+SHARE_DIR="/usr/local/share/openb"
 
-command -v git >/dev/null 2>&1 || {
-    echo "git is required but not installed." >&2
-    exit 1
-}
+for cmd in git make gcc pkg-config; do
+    command -v "$cmd" >/dev/null 2>&1 || {
+        echo "$cmd is required but not installed." >&2
+        exit 1
+    }
+done
 
-command -v make >/dev/null 2>&1 || {
-    echo "make is required but not installed." >&2
-    exit 1
-}
+if command -v apt-get >/dev/null 2>&1; then
+    echo "Updating package lists and installing dependencies..."
+    sudo apt-get update -y
+    sudo apt-get install -y build-essential libgtk-3-dev libwebkit2gtk-4.1-dev
+fi
+
+if command -v pkg-config >/dev/null 2>&1; then
+    pkg-config --exists gtk+-3.0 webkit2gtk-4.1 || echo "GTK or WebKit2GTK development packages missing."
+fi
 
 TMP_DIR=$(mktemp -d)
 trap 'rm -rf "$TMP_DIR"' EXIT
@@ -42,12 +52,16 @@ if [ $(id -u) -ne 0 ]; then
     if command -v sudo >/dev/null 2>&1; then
         echo "Installing to $INSTALL_DIR requires root privileges."
         sudo cp openb "$INSTALL_DIR/" || { echo "Install failed" >&2; exit 1; }
+        sudo mkdir -p "$SHARE_DIR"
+        sudo cp -r data/* "$SHARE_DIR/" || { echo "Data install failed" >&2; exit 1; }
     else
         echo "Run this script as root to install the binary." >&2
         exit 1
     fi
 else
     cp openb "$INSTALL_DIR/" || { echo "Install failed" >&2; exit 1; }
+    mkdir -p "$SHARE_DIR"
+    cp -r data/* "$SHARE_DIR/" || { echo "Data install failed" >&2; exit 1; }
 fi
 
 echo "Installation complete. You can run the browser with 'openb'."

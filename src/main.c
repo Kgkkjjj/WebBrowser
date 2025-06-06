@@ -19,6 +19,10 @@ static void load_home_page(void) {
         gchar *path = g_build_filename(cwd, "data", "home.html", NULL);
         g_free(cwd);
         if (!path || !g_file_test(path, G_FILE_TEST_EXISTS)) {
+            g_free(path);
+            path = g_build_filename("/usr/local/share/openb", "home.html", NULL);
+        }
+        if (!path || !g_file_test(path, G_FILE_TEST_EXISTS)) {
             GtkWidget *d = gtk_message_dialog_new(GTK_WINDOW(main_window),
                 GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT,
                 GTK_MESSAGE_ERROR,

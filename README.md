@@ -35,10 +35,12 @@ Run the compiled binary:
 
 The browser opens on a home page defined in `data/home.html`. It now sports a
 cleaner layout with a larger search box and flexible link tiles. Feel free to
-customize this file to suit your preferences. Use the address bar to enter a
-URL or a search query. The toolbar offers back, forward, reload, stop, home and
-info buttons. Click the **Info** button to see details about the browser. A
-status bar at the bottom displays page load progress and link targets.
+customize this file to suit your preferences. When installed via the net
+installer, this home page is copied to `/usr/local/share/openb` so the browser
+can find it from anywhere. Use the address bar to enter a URL or a search query.
+The toolbar offers back, forward, reload, stop, home and info buttons. Click the
+**Info** button to see details about the browser. A status bar at the bottom
+displays page load progress and link targets.
 
 OpenB stores persistent data in `~/.local/share/openb` and caches pages under
 `~/.cache/openb` for faster loading.
@@ -57,15 +59,17 @@ If the current directory is not a git repository and already contains files,
 the script will abort instead of cloning. Make sure to run it inside the project
 directory or an empty folder.
 
-The script uses `git` to fetch the latest changes from the configured
-repository. You can change the repository URL by editing the `REPO_URL`
+The script uses `git` to fetch the latest changes and then rebuilds the
+browser. You can change the repository URL by editing the `REPO_URL`
 variable in `update/update.sh`.
 
 ## Net Installer
 
 A script `net_installer.sh` is provided for installing OpenB directly from the
-internet. The script clones this repository to a temporary directory, builds the
-browser and copies the resulting `openb` binary to `/usr/local/bin`.
+internet. It performs a shallow clone of this repository, builds the browser and
+installs the `openb` binary to `/usr/local/bin`. The entire `data`
+directory is copied to `/usr/local/share/openb` so the browser can load
+the start page even when run outside the source tree.
 
 Run it with:
 
