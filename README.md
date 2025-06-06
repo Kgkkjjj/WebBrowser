@@ -48,21 +48,11 @@ OpenB stores persistent data in `~/.local/share/openb` and caches pages under
 
 ## Updating
 
-An `update` directory contains a simple script to pull the latest changes from
-[this repository](https://github.com/Kgkkjjj/WebBrowser/tree/codex/build-web-browser-with-gtk-3-gui).
-Run the update script from the project root with:
-
-```bash
-./update/update.sh
-```
-
-If the current directory is not a git repository and already contains files,
-the script will abort instead of cloning. Make sure to run it inside the project
-directory or an empty folder.
-
-The script uses `git` to fetch the latest changes and then rebuilds the
-browser. You can change the repository URL by editing the `REPO_URL`
-variable in `update/update.sh`.
+When running from a git checkout, OpenB can update itself without any external
+scripts. Simply click the **Update** button in the toolbar and confirm the
+prompt. The browser will pull the latest changes from this repository and
+rebuild automatically. If OpenB was installed without the git data available,
+an error dialog will inform you that updating is not possible.
 
 ## Net Installer
 

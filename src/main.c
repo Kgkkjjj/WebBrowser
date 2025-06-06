@@ -145,6 +145,70 @@ static void on_new_window(GtkWidget *widget, gpointer data) {
         g_spawn_command_line_async(program_path, NULL);
 }
 
+static gboolean perform_update(void) {
+    if (!g_file_test(".git", G_FILE_TEST_IS_DIR)) {
+        GtkWidget *err = gtk_message_dialog_new(GTK_WINDOW(main_window),
+            GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT,
+            GTK_MESSAGE_ERROR,
+            GTK_BUTTONS_CLOSE,
+            "No git repository found. Update cannot continue.");
+        gtk_dialog_run(GTK_DIALOG(err));
+        gtk_widget_destroy(err);
+        return FALSE;
+    }
+
+    GtkWidget *info = gtk_message_dialog_new(GTK_WINDOW(main_window),
+        GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT,
+        GTK_MESSAGE_INFO,
+        GTK_BUTTONS_NONE,
+        "Updating OpenB...\nThis may take a moment.");
+    gtk_widget_show(info);
+    while (gtk_events_pending())
+        gtk_main_iteration();
+
+    const gchar *cmd[] = {"/bin/sh", "-c", "git pull --rebase && make", NULL};
+    gint status = 0;
+    GError *error = NULL;
+    g_spawn_sync(NULL, (gchar **)cmd, NULL, G_SPAWN_SEARCH_PATH,
+                 NULL, NULL, NULL, NULL, &status, &error);
+
+    gtk_widget_destroy(info);
+
+    if (error || status != 0) {
+        GtkWidget *fail = gtk_message_dialog_new(GTK_WINDOW(main_window),
+            GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT,
+            GTK_MESSAGE_ERROR,
+            GTK_BUTTONS_CLOSE,
+            "Update failed: %s", error ? error->message : "unknown error");
+        gtk_dialog_run(GTK_DIALOG(fail));
+        gtk_widget_destroy(fail);
+        if (error)
+            g_error_free(error);
+        return FALSE;
+    }
+
+    GtkWidget *done = gtk_message_dialog_new(GTK_WINDOW(main_window),
+        GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT,
+        GTK_MESSAGE_INFO,
+        GTK_BUTTONS_CLOSE,
+        "Update complete. Restart OpenB to use the new version.");
+    gtk_dialog_run(GTK_DIALOG(done));
+    gtk_widget_destroy(done);
+    return TRUE;
+}
+
+static void check_for_updates(GtkWidget *widget, gpointer data) {
+    GtkWidget *confirm = gtk_message_dialog_new(GTK_WINDOW(main_window),
+        GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT,
+        GTK_MESSAGE_QUESTION,
+        GTK_BUTTONS_YES_NO,
+        "Check for updates and rebuild?");
+    gint res = gtk_dialog_run(GTK_DIALOG(confirm));
+    gtk_widget_destroy(confirm);
+    if (res == GTK_RESPONSE_YES)
+        perform_update();
+}
+
 static void show_about(GtkWidget *widget, gpointer data) {
     GtkAboutDialog *dialog = GTK_ABOUT_DIALOG(gtk_about_dialog_new());
     gtk_about_dialog_set_program_name(dialog, "OpenB");
@@ -194,6 +258,10 @@ int main(int argc, char *argv[]) {
     GtkToolItem *stop = gtk_tool_button_new_from_stock(GTK_STOCK_STOP);
     GtkToolItem *home = gtk_tool_button_new_from_stock(GTK_STOCK_HOME);
     GtkToolItem *new_window = gtk_tool_button_new_from_stock(GTK_STOCK_NEW);
+    GtkToolItem *update_btn = gtk_tool_button_new(NULL, "Update");
+    GtkWidget *update_icon = gtk_image_new_from_icon_name("system-software-update", GTK_ICON_SIZE_LARGE_TOOLBAR);
+    gtk_tool_button_set_icon_widget(GTK_TOOL_BUTTON(update_btn), update_icon);
+    gtk_widget_show(update_icon);
     GtkToolItem *about = gtk_tool_button_new_from_stock(GTK_STOCK_ABOUT);
     GtkToolItem *separator = gtk_separator_tool_item_new();
     GtkWidget *entry_widget = gtk_entry_new();
@@ -208,6 +276,7 @@ int main(int argc, char *argv[]) {
     gtk_toolbar_insert(GTK_TOOLBAR(toolbar), stop, -1);
     gtk_toolbar_insert(GTK_TOOLBAR(toolbar), home, -1);
     gtk_toolbar_insert(GTK_TOOLBAR(toolbar), new_window, -1);
+    gtk_toolbar_insert(GTK_TOOLBAR(toolbar), update_btn, -1);
     gtk_toolbar_insert(GTK_TOOLBAR(toolbar), separator, -1);
     gtk_toolbar_insert(GTK_TOOLBAR(toolbar), entry_item, -1);
     gtk_toolbar_insert(GTK_TOOLBAR(toolbar), about, -1);
@@ -222,6 +291,7 @@ int main(int argc, char *argv[]) {
     g_signal_connect(stop, "clicked", G_CALLBACK(stop_loading), NULL);
     g_signal_connect(home, "clicked", G_CALLBACK(navigate_home), NULL);
     g_signal_connect(new_window, "clicked", G_CALLBACK(on_new_window), NULL);
+    g_signal_connect(update_btn, "clicked", G_CALLBACK(check_for_updates), NULL);
     g_signal_connect(about, "clicked", G_CALLBACK(show_about), window);
     g_signal_connect(url_entry, "activate", G_CALLBACK(on_url_activate), NULL);
     g_signal_connect(web_view, "load-changed", G_CALLBACK(load_changed), NULL);
