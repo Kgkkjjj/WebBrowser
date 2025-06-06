@@ -574,40 +574,6 @@ static void toggle_fullscreen(GtkWidget *widget, gpointer data) {
     }
 }
 
-static void adjust_window_size(GtkWindow *window) {
-    GdkDisplay *display = gtk_widget_get_display(GTK_WIDGET(window));
-    if (!display)
-        display = gdk_display_get_default();
-    GdkMonitor *mon = NULL;
-    if (display) {
-        if (gtk_widget_get_window(GTK_WIDGET(window)))
-            mon = gdk_display_get_monitor_at_window(display, gtk_widget_get_window(GTK_WIDGET(window)));
-        if (!mon)
-            mon = gdk_display_get_primary_monitor(display);
-    }
-    if (mon) {
-        GdkRectangle geo;
-        gdk_monitor_get_geometry(mon, &geo);
-        gint w = geo.width * 0.9;
-        gint h = geo.height * 0.9;
-        if (w < 640) w = 640;
-        if (h < 480) h = 480;
-        gtk_window_resize(window, w, h);
-    } else {
-        gtk_window_resize(window, 800, 600);
-    }
-}
-
-static void on_monitors_changed(GdkDisplay *display, gpointer data) {
-    adjust_window_size(GTK_WINDOW(data));
-}
-
-static void on_window_realize(GtkWidget *widget, gpointer data) {
-    adjust_window_size(GTK_WINDOW(widget));
-    GdkDisplay *display = gtk_widget_get_display(widget);
-    if (display)
-        g_signal_connect(display, "monitors-changed", G_CALLBACK(on_monitors_changed), widget);
-}
 
 static void toggle_dark_mode(GtkWidget *widget, gpointer data) {
     dark_mode = !dark_mode;
@@ -667,8 +633,7 @@ int main(int argc, char *argv[]) {
 
     GtkWidget *window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
     main_window = window;
-    gtk_window_set_default_size(GTK_WINDOW(window), 800, 600);
-    g_signal_connect(window, "realize", G_CALLBACK(on_window_realize), NULL);
+    gtk_window_set_default_size(GTK_WINDOW(window), 1024, 768);
     gtk_window_set_title(GTK_WINDOW(window), "OpenB");
 
     GtkWidget *vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);

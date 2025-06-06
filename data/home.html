@@ -4,8 +4,8 @@
     <meta charset="utf-8">
     <title>OpenB Start Page</title>
     <style>
-        body { font-family: sans-serif; background: #e9ecef; margin: 0; }
-        header { background: #343a40; color: #fff; padding: 20px; text-align: center; }
+        body { font-family: sans-serif; background: linear-gradient(#f0f4f7,#d9e2ec); margin: 0; }
+        header { background: linear-gradient(90deg,#343a40,#212529); color: #fff; padding: 30px; text-align: center; }
         nav { background: #495057; text-align: center; }
         nav a { display: inline-block; padding: 10px 15px; color: #fff; text-decoration: none; }
         nav a:hover { background: #6c757d; }
@@ -28,6 +28,10 @@
             width: 180px;
             padding: 20px;
             text-align: center;
+            transition: transform .2s;
+        }
+        .tile:hover {
+            transform: scale(1.05);
         }
         .tile a {
             text-decoration: none;

@@ -42,8 +42,8 @@ to enter a URL or a search query. The toolbar offers back, forward, reload,
 stop, home and info buttons as well as **Update**, **DevTools**, **Zoom** and
 **View Source** controls. Additional buttons allow you to toggle JavaScript,
 clear the cache, capture a screenshot, view downloads, inspect search history
-and open the Extensions page. The window automatically resizes to roughly 90%
-of whichever monitor it appears on. The
+and open the Extensions page. The interface now sports a more modern look with
+a gradient header and card-style tiles on the home page. The
 **Info** button now opens a full about dialog with details and a link to the
 project website. A status bar at the bottom displays page load progress and link
 targets.
