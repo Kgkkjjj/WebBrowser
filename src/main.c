@@ -1,6 +1,7 @@
 #include <gtk/gtk.h>
 #include <gdk/gdkkeysyms.h>
 #include <webkit2/webkit2.h>
+#include "manager.h"
 
 static WebKitWebView *web_view;
 static GtkEntry *url_entry;
@@ -249,15 +250,12 @@ static gboolean load_failed(WebKitWebView *view,
                             const gchar *uri,
                             GError *error,
                             gpointer data) {
+    manager_show_error(GTK_WINDOW(main_window), "Failed to load %s:\n%s", uri, error->message);
     GtkWidget *dialog = gtk_message_dialog_new(GTK_WINDOW(main_window),
         GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT,
-        GTK_MESSAGE_ERROR,
-        GTK_BUTTONS_NONE,
-        "Failed to load %s:\n%s",
-        uri,
-        error->message);
-    gtk_dialog_add_button(GTK_DIALOG(dialog), "Retry", GTK_RESPONSE_YES);
-    gtk_dialog_add_button(GTK_DIALOG(dialog), "Close", GTK_RESPONSE_CLOSE);
+        GTK_MESSAGE_QUESTION,
+        GTK_BUTTONS_YES_NO,
+        "Retry loading?");
     gint resp = gtk_dialog_run(GTK_DIALOG(dialog));
     gtk_widget_destroy(dialog);
     if (resp == GTK_RESPONSE_YES)
@@ -436,16 +434,22 @@ static void downloads_window_show(void) {
 static void download_progress(WebKitDownload *download, GParamSpec *pspec, gpointer user_data) {
     GtkProgressBar *bar = GTK_PROGRESS_BAR(user_data);
     gtk_progress_bar_set_fraction(bar, webkit_download_get_estimated_progress(download));
+    BrowserTask *task = g_object_get_data(G_OBJECT(download), "bm_task");
+    if (task) manager_update_task(task, webkit_download_get_estimated_progress(download));
 }
 
 static void download_finished(WebKitDownload *download, gpointer user_data) {
     GtkProgressBar *bar = GTK_PROGRESS_BAR(user_data);
     gtk_progress_bar_set_fraction(bar, 1.0);
+    BrowserTask *task = g_object_get_data(G_OBJECT(download), "bm_task");
+    if (task) manager_remove_task(task);
 }
 
 static void download_started(WebKitWebContext *ctx, WebKitDownload *download, gpointer user_data) {
     downloads_window_show();
     const char *uri = webkit_uri_request_get_uri(webkit_download_get_request(download));
+    BrowserTask *task = manager_add_task(uri, TRUE, download);
+    g_object_set_data(G_OBJECT(download), "bm_task", task);
     GtkWidget *row = gtk_box_new(GTK_ORIENTATION_VERTICAL, 2);
     GtkWidget *label = gtk_label_new(uri);
     GtkWidget *bar = gtk_progress_bar_new();
@@ -483,6 +487,12 @@ static void open_extensions_page(GtkWidget *widget, gpointer data) {
         g_free(uri);
     }
     g_free(path);
+}
+
+static void show_tasks_manager(GtkWidget *widget, gpointer data) {
+    GtkWidget *win = manager_get_window();
+    gtk_widget_show_all(win);
+    gtk_window_present(GTK_WINDOW(win));
 }
 
 static gboolean perform_update(void) {
@@ -851,6 +861,8 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
+    manager_init();
+
     program_path = argv[0];
 
     for (int i = 1; i < argc; i++) {
@@ -1018,6 +1030,10 @@ int main(int argc, char *argv[]) {
     GtkWidget *cdl_icon = gtk_image_new_from_icon_name("edit-delete", GTK_ICON_SIZE_LARGE_TOOLBAR);
     gtk_tool_button_set_icon_widget(GTK_TOOL_BUTTON(cleardl_btn), cdl_icon);
     gtk_widget_show(cdl_icon);
+    GtkToolItem *tasks_btn = gtk_tool_button_new(NULL, "Tasks");
+    GtkWidget *tasks_icon = gtk_image_new_from_icon_name("utilities-system-monitor", GTK_ICON_SIZE_LARGE_TOOLBAR);
+    gtk_tool_button_set_icon_widget(GTK_TOOL_BUTTON(tasks_btn), tasks_icon);
+    gtk_widget_show(tasks_icon);
     GtkToolItem *about = gtk_tool_button_new_from_stock(GTK_STOCK_ABOUT);
     GtkToolItem *separator = gtk_separator_tool_item_new();
     GtkWidget *entry_widget = gtk_entry_new();
@@ -1064,6 +1080,7 @@ int main(int argc, char *argv[]) {
     gtk_toolbar_insert(GTK_TOOLBAR(toolbar), info_btn, -1);
     gtk_toolbar_insert(GTK_TOOLBAR(toolbar), clearhist_btn, -1);
     gtk_toolbar_insert(GTK_TOOLBAR(toolbar), cleardl_btn, -1);
+    gtk_toolbar_insert(GTK_TOOLBAR(toolbar), tasks_btn, -1);
     gtk_toolbar_insert(GTK_TOOLBAR(toolbar), separator, -1);
     gtk_toolbar_insert(GTK_TOOLBAR(toolbar), entry_item, -1);
     gtk_toolbar_insert(GTK_TOOLBAR(toolbar), about, -1);
@@ -1106,6 +1123,7 @@ int main(int argc, char *argv[]) {
     gtk_widget_set_tooltip_text(GTK_WIDGET(info_btn), "Page Info");
     gtk_widget_set_tooltip_text(GTK_WIDGET(clearhist_btn), "Clear Search History");
     gtk_widget_set_tooltip_text(GTK_WIDGET(cleardl_btn), "Clear Downloads");
+    gtk_widget_set_tooltip_text(GTK_WIDGET(tasks_btn), "Show Task Manager");
 
     gtk_widget_add_accelerator(GTK_WIDGET(reload), "clicked", accel, GDK_KEY_F5, 0, GTK_ACCEL_VISIBLE);
     gtk_widget_add_accelerator(GTK_WIDGET(home), "clicked", accel, GDK_KEY_F6, 0, GTK_ACCEL_VISIBLE);
@@ -1141,6 +1159,7 @@ int main(int argc, char *argv[]) {
     gtk_widget_add_accelerator(GTK_WIDGET(info_btn), "clicked", accel, GDK_KEY_F3, 0, GTK_ACCEL_VISIBLE);
     gtk_widget_add_accelerator(GTK_WIDGET(clearhist_btn), "clicked", accel, GDK_KEY_H, GDK_CONTROL_MASK | GDK_SHIFT_MASK, GTK_ACCEL_VISIBLE);
     gtk_widget_add_accelerator(GTK_WIDGET(cleardl_btn), "clicked", accel, GDK_KEY_D, GDK_CONTROL_MASK | GDK_SHIFT_MASK, GTK_ACCEL_VISIBLE);
+    gtk_widget_add_accelerator(GTK_WIDGET(tasks_btn), "clicked", accel, GDK_KEY_M, GDK_CONTROL_MASK | GDK_SHIFT_MASK, GTK_ACCEL_VISIBLE);
     web_view = WEBKIT_WEB_VIEW(webkit_web_view_new_with_context(context));
     load_extensions(webkit_web_view_get_user_content_manager(web_view));
     webkit_settings_set_enable_developer_extras(webkit_web_view_get_settings(web_view), TRUE);
@@ -1185,6 +1204,7 @@ int main(int argc, char *argv[]) {
     g_signal_connect(info_btn, "clicked", G_CALLBACK(page_info), NULL);
     g_signal_connect(clearhist_btn, "clicked", G_CALLBACK(clear_history), NULL);
     g_signal_connect(cleardl_btn, "clicked", G_CALLBACK(clear_downloads), NULL);
+    g_signal_connect(tasks_btn, "clicked", G_CALLBACK(show_tasks_manager), NULL);
     g_signal_connect(about, "clicked", G_CALLBACK(show_about), window);
     g_signal_connect(url_entry, "activate", G_CALLBACK(on_url_activate), NULL);
     g_signal_connect(web_view, "load-changed", G_CALLBACK(load_changed), NULL);
@@ -1228,5 +1248,6 @@ int main(int argc, char *argv[]) {
     if (manager)
         g_object_unref(manager);
     g_object_unref(context);
+    manager_shutdown();
     return 0;
 }

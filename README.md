@@ -63,6 +63,9 @@ Downloads are saved to your standard `~/Downloads` directory and you can view
 active transfers with the **Downloads** button. Search queries entered in the
 address bar are kept in memory for the current session and accessible via the
 **History** button.
+Any loading or network errors are written to `~/.cache/openb/error.log` and
+displayed in a dialog. A dedicated **Tasks** window shows active downloads and
+operations. Open it with the **Tasks** toolbar button or `Ctrl+Shift+M`.
 
 ## Updating
 
@@ -120,6 +123,7 @@ OpenB ships with several tools for debugging web pages:
 - **Page Info** (F3)
 - **Clear History** (Ctrl+Shift+H)
 - **Clear Downloads** (Ctrl+Shift+D)
+- **Task Manager** (Ctrl+Shift+M)
 - **New Tab** (Ctrl+T)
 - **Close Tab** (Ctrl+W)
 - **Private Window** (Ctrl+Shift+N)
