@@ -38,12 +38,14 @@ This page consists of roughly **eighty lines** of HTML, CSS and JavaScript.
 A search box sits above thirty colourful tiles generated with JavaScript that
 link to `downloads.html`, `news.html`, `devtools.html` and `extensions.html`.
 Each tile logs a short message when clicked so you can confirm the JavaScript
-is working.
+is working. Queries entered in the search box open `search.html`, which uses the
+DuckDuckGo API to display results directly inside OpenB.
 When
 installed via the net installer the entire `data` folder is copied to
 `/usr/local/share/openb` so the pages work even when you run the browser outside
 the source tree. Use the
-address bar to enter a URL or a search query. The toolbar offers back, forward,
+address bar to enter a URL or a search query; non-URL text is sent to
+`search.html` for results. The toolbar offers back, forward,
 reload, stop, home and info buttons as well as **Update**, **DevTools**, **Zoom**
 and **View Source** controls. Additional buttons allow you to toggle JavaScript,
 clear the cache, capture a screenshot, view downloads, inspect search history and

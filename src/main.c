@@ -117,28 +117,36 @@ static gboolean block_trackers(WebKitWebView *view, WebKitWebResource *res, WebK
 }
 
 static gchar *home_file_uri = NULL;
+static gchar *search_file_uri = NULL;
+
+static gchar *find_data_file(const gchar *name) {
+    gchar *cwd = g_get_current_dir();
+    if (!cwd)
+        return NULL;
+    gchar *path = g_build_filename(cwd, "data", name, NULL);
+    g_free(cwd);
+    if (!g_file_test(path, G_FILE_TEST_EXISTS)) {
+        g_free(path);
+        path = g_build_filename("/usr/local/share/openb", name, NULL);
+        if (!g_file_test(path, G_FILE_TEST_EXISTS)) {
+            g_free(path);
+            return NULL;
+        }
+    }
+    return path;
+}
 
 static void load_home_page(void) {
     if (!home_file_uri) {
-        gchar *cwd = g_get_current_dir();
-        if (!cwd)
-            return;
-        gchar *path = g_build_filename(cwd, "data", "home.html", NULL);
-        g_free(cwd);
-        if (!path || !g_file_test(path, G_FILE_TEST_EXISTS)) {
-            g_free(path);
-            path = g_build_filename("/usr/local/share/openb", "home.html", NULL);
-        }
-        if (!path || !g_file_test(path, G_FILE_TEST_EXISTS)) {
+        gchar *path = find_data_file("home.html");
+        if (!path) {
             GtkWidget *d = gtk_message_dialog_new(GTK_WINDOW(main_window),
                 GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT,
                 GTK_MESSAGE_ERROR,
                 GTK_BUTTONS_CLOSE,
-                "Home page not found:\n%s",
-                path ? path : "data/home.html");
+                "Home page not found");
             gtk_dialog_run(GTK_DIALOG(d));
             gtk_widget_destroy(d);
-            g_free(path);
             return;
         }
         home_file_uri = g_strdup_printf("file://%s", path);
@@ -146,6 +154,17 @@ static void load_home_page(void) {
     }
     if (home_file_uri)
         webkit_web_view_load_uri(web_view, home_file_uri);
+}
+
+static const gchar *get_search_uri(void) {
+    if (!search_file_uri) {
+        gchar *path = find_data_file("search.html");
+        if (!path)
+            return NULL;
+        search_file_uri = g_strdup_printf("file://%s", path);
+        g_free(path);
+    }
+    return search_file_uri;
 }
 
 static void navigate_home(GtkWidget *widget, gpointer data) {
@@ -179,8 +198,12 @@ static void on_url_activate(GtkEntry *entry, gpointer user_data) {
     if (g_str_has_prefix(text, "http://") || g_str_has_prefix(text, "https://")) {
         uri = g_strdup(text);
     } else {
+        const gchar *search_base = get_search_uri();
         gchar *escaped = g_uri_escape_string(text, NULL, TRUE);
-        uri = g_strdup_printf("https://duckduckgo.com/?q=%s", escaped);
+        if (search_base)
+            uri = g_strdup_printf("%s?q=%s", search_base, escaped);
+        else
+            uri = g_strdup_printf("https://duckduckgo.com/?q=%s", escaped);
         g_free(escaped);
         search_history = g_slist_prepend(search_history, g_strdup(text));
     }
@@ -1200,6 +1223,8 @@ int main(int argc, char *argv[]) {
     g_free(cache_dir);
     g_free(bookmarks_file);
     g_free(session_file);
+    g_free(home_file_uri);
+    g_free(search_file_uri);
     if (manager)
         g_object_unref(manager);
     g_object_unref(context);
