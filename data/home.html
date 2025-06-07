@@ -46,8 +46,12 @@
           const q=e.target.value.trim();
           if(q.startsWith("http://")||q.startsWith("https://"))
             window.location.href=q;
-          else
-            window.location.href="search.html?q="+encodeURIComponent(q);
+          else {
+            let dest="search.html?q="+encodeURIComponent(q);
+            if(location.protocol==='file:')
+              dest="http://localhost:8080/"+dest;
+            window.location.href=dest;
+          }
         }
       });
     });

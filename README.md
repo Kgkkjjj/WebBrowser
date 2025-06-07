@@ -39,12 +39,15 @@ rules live in a separate `styles.css` file.
 A search box sits above thirty colourful tiles generated with JavaScript that
 link to `downloads.html`, `news.html`, `devtools.html` and `extensions.html`.
 Each tile logs a short message when clicked so you can confirm the JavaScript
-is working. Queries entered in the search box open `search.html`, which uses the
-DuckDuckGo API to display results directly inside OpenB.
+is working. Queries entered in the search box open `search.html`.
+Both the home page and search page rely on a small backend server that proxies
+requests to the DuckDuckGo API. Start it with `python3 server.py` and then open
+`http://localhost:8080/` in OpenB. The server serves the pages from the `data`
+directory and exposes a `/search` endpoint used by the JavaScript code.
 When
-installed via the net installer the entire `data` folder is copied to
-`/usr/local/share/openb` so the pages work even when you run the browser outside
-the source tree. Use the
+installed via the net installer the entire `data` folder and `server.py` are
+copied to `/usr/local/share/openb` so the pages work even when you run the
+browser outside the source tree. Use the
 address bar to enter a URL or a search query; non-URL text is sent to
 `search.html` for results. The toolbar offers back, forward,
 reload, stop, home and info buttons as well as **Update**, **DevTools**, **Zoom**
