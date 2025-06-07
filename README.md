@@ -58,6 +58,8 @@ endpoints and writes all activity to `~/.cache/openb/server.log`. If the backend
 is unavailable or returns an error,
 the search page automatically redirects to `https://duckduckgo.com` so queries
 always succeed.
+If you run `server.py` manually it checks for these Python packages and installs
+any missing ones into your user environment before starting.
 When installed via the net installer the entire `data` folder and `server.py`
 are copied to `/usr/local/share/openb` so the pages work even when you run the
 browser outside the source tree. Use the

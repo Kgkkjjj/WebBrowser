@@ -4,6 +4,23 @@ import os
 import json
 import logging
 from logging.handlers import RotatingFileHandler
+import subprocess
+import sys
+import importlib.util
+
+REQUIRED = ["requests", "flask", "fastapi", "uvicorn"]
+
+
+def ensure_deps() -> None:
+    missing = [p for p in REQUIRED if importlib.util.find_spec(p) is None]
+    if missing:
+        try:
+            subprocess.check_call([sys.executable, "-m", "pip", "install", "--quiet", "--user", *missing])
+        except Exception as exc:  # pragma: no cover - best effort install
+            print(f"Failed to install packages: {exc}")
+
+
+ensure_deps()
 
 import requests
 from flask import Flask, send_from_directory
