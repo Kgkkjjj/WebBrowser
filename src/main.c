@@ -122,6 +122,23 @@ static gboolean block_trackers(WebKitWebView *view, WebKitURIRequest *req,
     return FALSE;
 }
 
+static void safe_connect_send_request(WebKitWebResource *res) {
+    if (!res)
+        return;
+    guint id = g_signal_lookup("send-request", G_OBJECT_TYPE(res));
+    if (id == 0) {
+        manager_log_warning("'send-request' not supported on %s",
+            G_OBJECT_TYPE_NAME(res));
+        return;
+    }
+    g_signal_connect(res, "send-request", G_CALLBACK(block_trackers), NULL);
+}
+
+static void resource_started(WebKitWebView *view, WebKitWebResource *res,
+                             WebKitURIRequest *req, gpointer data) {
+    safe_connect_send_request(res);
+}
+
 static gchar *home_file_uri = NULL;
 static gchar *search_file_uri = NULL;
 
@@ -906,7 +923,8 @@ static void new_tab(GtkWidget *w, gpointer d) {
     g_signal_connect(view, "load-failed", G_CALLBACK(load_failed), NULL);
     g_signal_connect(view, "mouse-target-changed", G_CALLBACK(mouse_target_changed), NULL);
     webkit_settings_set_javascript_can_open_windows_automatically(webkit_web_view_get_settings(view), FALSE);
-    g_signal_connect(view, "send-request", G_CALLBACK(block_trackers), NULL);
+    g_signal_connect(view, "resource-load-started",
+        G_CALLBACK(resource_started), NULL);
     g_signal_connect(view, "create", G_CALLBACK(popup_requested), NULL);
 }
 
@@ -1263,7 +1281,8 @@ int main(int argc, char *argv[]) {
     load_extensions(webkit_web_view_get_user_content_manager(web_view));
     webkit_settings_set_enable_developer_extras(webkit_web_view_get_settings(web_view), TRUE);
     webkit_settings_set_javascript_can_open_windows_automatically(webkit_web_view_get_settings(web_view), FALSE);
-    g_signal_connect(web_view, "send-request", G_CALLBACK(block_trackers), NULL);
+    g_signal_connect(web_view, "resource-load-started",
+        G_CALLBACK(resource_started), NULL);
     g_signal_connect(web_view, "create", G_CALLBACK(popup_requested), NULL);
     g_signal_connect(back, "clicked", G_CALLBACK(navigate_back), NULL);
     g_signal_connect(forward, "clicked", G_CALLBACK(navigate_forward), NULL);

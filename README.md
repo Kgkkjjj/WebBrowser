@@ -69,6 +69,8 @@ operations. Open it with the **Tasks** toolbar button or `Ctrl+Shift+M`.
 The manager also keeps an eye on memory usage. If the browser consumes more
 than about 200 MB, a warning is written to the log and shown in a dialog so you
 can decide whether to continue.
+Tracking protection hooks into each network resource. If the browser fails
+to connect the filtering signal, a warning is logged so you can investigate.
 
 ## Updating
 
