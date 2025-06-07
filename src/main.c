@@ -945,7 +945,7 @@ static void save_session(void) {
     if (!session_file)
         return;
     GString *out = g_string_new("");
-    if (!notebook) {
+    if (!notebook || !GTK_IS_NOTEBOOK(notebook)) {
         g_string_free(out, TRUE);
         return;
     }
@@ -983,6 +983,16 @@ static void load_session(void) {
     g_free(content);
 }
 
+static gboolean on_delete_event(GtkWidget *w, GdkEvent *e, gpointer d) {
+    save_session();
+    return FALSE; /* propagate to let GTK destroy the window */
+}
+
+static void on_window_destroy(GtkWidget *w, gpointer d) {
+    notebook = NULL;
+    gtk_main_quit();
+}
+
 static void tab_switched(GtkNotebook *nb, GtkWidget *page, guint page_num, gpointer data) {
     web_view = WEBKIT_WEB_VIEW(page);
 }
@@ -1005,7 +1015,7 @@ static void new_tab(GtkWidget *w, gpointer d) {
 }
 
 static void close_tab(GtkWidget *w, gpointer d) {
-    if (!notebook)
+    if (!notebook || !GTK_IS_NOTEBOOK(notebook))
         return;
     gint page = gtk_notebook_get_current_page(notebook);
     if (gtk_notebook_get_n_pages(notebook) > 1) {
@@ -1424,7 +1434,8 @@ int main(int argc, char *argv[]) {
     gtk_box_pack_start(GTK_BOX(vbox), status_label, FALSE, FALSE, 0);
     gtk_container_add(GTK_CONTAINER(window), vbox);
 
-    g_signal_connect(window, "destroy", G_CALLBACK(gtk_main_quit), NULL);
+    g_signal_connect(window, "delete-event", G_CALLBACK(on_delete_event), NULL);
+    g_signal_connect(window, "destroy", G_CALLBACK(on_window_destroy), NULL);
     g_signal_connect(window, "realize", G_CALLBACK(window_realized), NULL);
     load_session();
     if (!session_file || !g_file_test(session_file, G_FILE_TEST_EXISTS))

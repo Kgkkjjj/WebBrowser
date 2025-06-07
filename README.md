@@ -52,10 +52,13 @@ requests to the DuckDuckGo API. OpenB automatically creates a Python virtual
 environment under `~/.local/share/openb/venv`, installs the `requests`
 dependency, and starts `server.py` on `http://localhost:8080/` when the browser
 launches. The server serves the pages from the `data` directory and exposes a
-`/search` endpoint used by the JavaScript code. When installed via the net
-installer the entire `data` folder and `server.py` are copied to
-`/usr/local/share/openb` so the pages work even when you run the browser outside
-the source tree. Use the
+`/search` endpoint used by the JavaScript code. It also provides `/status` and
+`/log` for health checks and reviewing the backend log. The tab count can be
+updated through `/update_tabs`. All requests and errors are written to
+`~/.cache/openb/server.log`.
+When installed via the net installer the entire `data` folder and `server.py`
+are copied to `/usr/local/share/openb` so the pages work even when you run the
+browser outside the source tree. Use the
 address bar to enter a URL or a search query; non-URL text is sent to
 `search.html` for results. The toolbar offers back, forward,
 reload, stop, home and info buttons as well as **Update**, **DevTools**, **Zoom**
