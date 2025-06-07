@@ -102,14 +102,24 @@ OpenB ships with several tools for debugging web pages:
 - **Clear Cookies** (Ctrl+Shift+Del)
 - **Copy URL** (Ctrl+Shift+C)
 - **Paste & Go** (Ctrl+Shift+V)
+- **Bookmark Page** (Ctrl+D)
+- **Show Bookmarks** (Ctrl+B)
 - **Open File** (Ctrl+O)
 - **Save Page** (Ctrl+S)
 - **Print Page** (Ctrl+Shift+P)
 - **Toggle Fullscreen** (F11)
 - **Toggle Dark Mode** (F2)
+- **Reader Mode** (Ctrl+R)
+- **Picture in Picture** (Ctrl+Shift+I)
 - **Page Info** (F3)
 - **Clear History** (Ctrl+Shift+H)
 - **Clear Downloads** (Ctrl+Shift+D)
+- **New Tab** (Ctrl+T)
+- **Close Tab** (Ctrl+W)
+- **Private Window** (Ctrl+Shift+N)
+
+Additional features include automatic spell checking, blocking of common tracking scripts,
+session restoration across launches and built-in pop-up blocking.
 
 Extensions are simple JavaScript files placed in `extensions/`. They are
 injected into every page when the browser starts. Use the **Extensions** button
