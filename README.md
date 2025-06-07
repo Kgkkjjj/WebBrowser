@@ -34,7 +34,8 @@ Run the compiled binary:
 ```
 
 The browser opens on an interactive home page located in `data/home.html`.
-This page consists of roughly **eighty lines** of HTML, CSS and JavaScript.
+This page includes about sixty lines of HTML and JavaScript while its style
+rules live in a separate `styles.css` file.
 A search box sits above thirty colourful tiles generated with JavaScript that
 link to `downloads.html`, `news.html`, `devtools.html` and `extensions.html`.
 Each tile logs a short message when clicked so you can confirm the JavaScript
