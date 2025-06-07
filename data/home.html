@@ -41,17 +41,33 @@
         addTile(i+1,`${text} ${i+1}`,url);
       }
       byId("theme-btn").addEventListener("click",applyTheme);
-      byId("search-input").addEventListener("keydown",e=>{
-        if(e.key==="Enter"){
-          const q=e.target.value.trim();
-          if(q.startsWith("http://")||q.startsWith("https://"))
-            window.location.href=q;
-          else {
-            let dest="search.html?q="+encodeURIComponent(q);
+
+      function checkServer(cb){
+        const url = location.protocol==='file:' ? 'http://localhost:8080/status' : '/status';
+        fetch(url,{method:'GET'}).then(()=>cb(true)).catch(()=>cb(false));
+      }
+
+      function submitSearch(q){
+        if(q.startsWith('http://')||q.startsWith('https://')){
+          window.location.href=q;
+          return;
+        }
+        checkServer(ok=>{
+          if(ok){
+            let dest='search.html?q='+encodeURIComponent(q);
             if(location.protocol==='file:')
-              dest="http://localhost:8080/"+dest;
+              dest='http://localhost:8080/'+dest;
             window.location.href=dest;
+          }else{
+            window.location.href='https://duckduckgo.com/?q='+encodeURIComponent(q);
           }
+        });
+      }
+
+      byId('search-input').addEventListener('keydown',e=>{
+        if(e.key==='Enter'){
+          const q=e.target.value.trim();
+          if(q) submitSearch(q);
         }
       });
     });

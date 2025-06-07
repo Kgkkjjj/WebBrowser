@@ -49,10 +49,15 @@
     function search(q){
         const url = endpoint + encodeURIComponent(q);
         fetch(url)
-            .then(r=>r.json())
+            .then(r=>{ if(!r.ok) throw new Error('backend'); return r.json(); })
             .then(d=>{
                 if(Array.isArray(d.RelatedTopics))
                     showResults(d.RelatedTopics);
+                else
+                    throw new Error('bad data');
+            })
+            .catch(()=>{
+                window.location.href='https://duckduckgo.com/?q='+encodeURIComponent(q);
             });
     }
 

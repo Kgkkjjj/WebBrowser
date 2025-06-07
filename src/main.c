@@ -20,6 +20,7 @@ static gboolean js_enabled = TRUE;
 static gboolean images_enabled = TRUE;
 static gboolean dark_mode = FALSE;
 static gboolean is_fullscreen = FALSE;
+static gboolean backend_available = TRUE;
 
 typedef struct DownloadRow {
     GtkWidget *row;
@@ -95,8 +96,10 @@ static gboolean start_backend_server(void) {
     g_object_unref(client);
     ensure_python_env();
     server_path = find_root_file("server.py");
-    if (!server_path || !venv_python)
+    if (!server_path || !venv_python) {
+        backend_available = FALSE;
         return FALSE;
+    }
     gchar *cmd = g_strdup_printf("'%s' '%s'", venv_python, server_path);
     gchar *dir = g_path_get_dirname(server_path);
     gchar *env_port = g_strdup_printf("OPENB_PORT=%d", BACKEND_PORT);
@@ -113,8 +116,10 @@ static gboolean start_backend_server(void) {
         g_free(server_path);
         server_path = NULL;
         server_pid = 0;
+        backend_available = FALSE;
         return FALSE;
     }
+    backend_available = TRUE;
     return TRUE;
 }
 
@@ -126,6 +131,7 @@ static void stop_backend_server(void) {
     }
     g_clear_pointer(&server_path, g_free);
     g_clear_pointer(&venv_python, g_free);
+    backend_available = FALSE;
 }
 
 static void new_tab(GtkWidget *w, gpointer d);
@@ -276,6 +282,8 @@ static void load_home_page(void) {
 }
 
 static const gchar *get_search_uri(void) {
+    if (!backend_available)
+        return NULL;
     if (!search_file_uri) {
         gchar *path = find_data_file("search.html");
         if (!path)

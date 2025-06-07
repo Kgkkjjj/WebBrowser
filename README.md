@@ -57,12 +57,15 @@ serves the pages from the `data` directory and exposes a
 `/search` endpoint used by the JavaScript code. It also provides `/status` and
 `/log` for health checks and reviewing the backend log. The tab count can be
 updated through `/update_tabs`. All requests and errors are written to
-`~/.cache/openb/server.log`.
+`~/.cache/openb/server.log`. If the backend is unavailable or returns an error,
+the search page automatically redirects to `https://duckduckgo.com` so queries
+always succeed.
 When installed via the net installer the entire `data` folder and `server.py`
 are copied to `/usr/local/share/openb` so the pages work even when you run the
 browser outside the source tree. Use the
 address bar to enter a URL or a search query; non-URL text is sent to
-`search.html` for results. The toolbar offers back, forward,
+`search.html` for results. If the backend is unavailable, the query opens on
+DuckDuckGo instead. The toolbar offers back, forward,
 reload, stop, home and info buttons as well as **Update**, **DevTools**, **Zoom**
 and **View Source** controls. Additional buttons allow you to toggle JavaScript,
 clear the cache, capture a screenshot, view downloads, inspect search history and

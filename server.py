@@ -43,9 +43,15 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             if parsed.path == '/search':
                 q = parse_qs(parsed.query).get('q', [''])[0]
                 api = f"https://api.duckduckgo.com/?q={quote(q)}&format=json&no_redirect=1&no_html=1"
-                resp = requests.get(api, timeout=5)
-                data = resp.content
-                self.send_response(200)
+                try:
+                    resp = requests.get(api, timeout=5)
+                    resp.raise_for_status()
+                    data = resp.content
+                    self.send_response(200)
+                except Exception as err:
+                    logger.error('search request failed: %s', err)
+                    data = json.dumps({'error': 'search-failed'}).encode()
+                    self.send_response(502)
                 self._cors()
                 self.send_header('Content-Type', 'application/json')
                 self.end_headers()
