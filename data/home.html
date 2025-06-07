@@ -1,6 +1,5 @@
   <title>OpenB Start Page</title>
-    *{margin:0;padding:0;box-sizing:border-box;}
-    body{font-family:sans-serif;background:#fdfdfd;color:#333;}
+    body{font-family:sans-serif;background:#fdfdfd;color:#333;margin:0;padding:0;box-sizing:border-box;}
     header{background:#222;color:#fff;padding:20px;text-align:center;}
     nav{background:#444;color:#fff;padding:10px;text-align:center;}
     nav a{color:#fff;margin:0 10px;text-decoration:none;font-weight:bold;}
@@ -16,471 +15,57 @@
     body.dark header{background:#111;}
     body.dark .tile{border-color:#555;}
     body.dark .tile:hover{background:#333;}
-    .color-1{background:hsl(6,60%,90%);}
-    .color-2{background:hsl(12,60%,90%);}
-    .color-3{background:hsl(18,60%,90%);}
-    .color-4{background:hsl(24,60%,90%);}
-    .color-5{background:hsl(30,60%,90%);}
-    .color-6{background:hsl(36,60%,90%);}
-    .color-7{background:hsl(42,60%,90%);}
-    .color-8{background:hsl(48,60%,90%);}
-    .color-9{background:hsl(54,60%,90%);}
-    .color-10{background:hsl(60,60%,90%);}
-    .color-11{background:hsl(66,60%,90%);}
-    .color-12{background:hsl(72,60%,90%);}
-    .color-13{background:hsl(78,60%,90%);}
-    .color-14{background:hsl(84,60%,90%);}
-    .color-15{background:hsl(90,60%,90%);}
-    .color-16{background:hsl(96,60%,90%);}
-    .color-17{background:hsl(102,60%,90%);}
-    .color-18{background:hsl(108,60%,90%);}
-    .color-19{background:hsl(114,60%,90%);}
-    .color-20{background:hsl(120,60%,90%);}
-    .color-21{background:hsl(126,60%,90%);}
-    .color-22{background:hsl(132,60%,90%);}
-    .color-23{background:hsl(138,60%,90%);}
-    .color-24{background:hsl(144,60%,90%);}
-    .color-25{background:hsl(150,60%,90%);}
-    .color-26{background:hsl(156,60%,90%);}
-    .color-27{background:hsl(162,60%,90%);}
-    .color-28{background:hsl(168,60%,90%);}
-    .color-29{background:hsl(174,60%,90%);}
-    .color-30{background:hsl(180,60%,90%);}
-    .color-31{background:hsl(186,60%,90%);}
-    .color-32{background:hsl(192,60%,90%);}
-    .color-33{background:hsl(198,60%,90%);}
-    .color-34{background:hsl(204,60%,90%);}
-    .color-35{background:hsl(210,60%,90%);}
-    .color-36{background:hsl(216,60%,90%);}
-    .color-37{background:hsl(222,60%,90%);}
-    .color-38{background:hsl(228,60%,90%);}
-    .color-39{background:hsl(234,60%,90%);}
-    .color-40{background:hsl(240,60%,90%);}
-    .color-41{background:hsl(246,60%,90%);}
-    .color-42{background:hsl(252,60%,90%);}
-    .color-43{background:hsl(258,60%,90%);}
-    .color-44{background:hsl(264,60%,90%);}
-    .color-45{background:hsl(270,60%,90%);}
-    .color-46{background:hsl(276,60%,90%);}
-    .color-47{background:hsl(282,60%,90%);}
-    .color-48{background:hsl(288,60%,90%);}
-    .color-49{background:hsl(294,60%,90%);}
-    .color-50{background:hsl(300,60%,90%);}
-<header>
-  <h1>Welcome to OpenB</h1>
-</header>
-<nav>
-  <a href="downloads.html">Downloads</a>
-  <a href="news.html">News</a>
-  <a href="devtools.html">DevTools</a>
-  <a href="extensions.html">Extensions</a>
-  <button id="theme-btn">Toggle Theme</button>
-</nav>
-  <section id="search-section">
-    <input id="search-input" placeholder="Search or enter address"/>
-  </section>
-  <section class="tiles">
-    <div class="tile color-1" id="tile1">Tile 1</div>
-    <div class="tile color-2" id="tile2">Tile 2</div>
-    <div class="tile color-3" id="tile3">Tile 3</div>
-    <div class="tile color-4" id="tile4">Tile 4</div>
-    <div class="tile color-5" id="tile5">Tile 5</div>
-    <div class="tile color-6" id="tile6">Tile 6</div>
-    <div class="tile color-7" id="tile7">Tile 7</div>
-    <div class="tile color-8" id="tile8">Tile 8</div>
-    <div class="tile color-9" id="tile9">Tile 9</div>
-    <div class="tile color-10" id="tile10">Tile 10</div>
-    <div class="tile color-11" id="tile11">Tile 11</div>
-    <div class="tile color-12" id="tile12">Tile 12</div>
-    <div class="tile color-13" id="tile13">Tile 13</div>
-    <div class="tile color-14" id="tile14">Tile 14</div>
-    <div class="tile color-15" id="tile15">Tile 15</div>
-    <div class="tile color-16" id="tile16">Tile 16</div>
-    <div class="tile color-17" id="tile17">Tile 17</div>
-    <div class="tile color-18" id="tile18">Tile 18</div>
-    <div class="tile color-19" id="tile19">Tile 19</div>
-    <div class="tile color-20" id="tile20">Tile 20</div>
-    <div class="tile color-21" id="tile21">Tile 21</div>
-    <div class="tile color-22" id="tile22">Tile 22</div>
-    <div class="tile color-23" id="tile23">Tile 23</div>
-    <div class="tile color-24" id="tile24">Tile 24</div>
-    <div class="tile color-25" id="tile25">Tile 25</div>
-    <div class="tile color-26" id="tile26">Tile 26</div>
-    <div class="tile color-27" id="tile27">Tile 27</div>
-    <div class="tile color-28" id="tile28">Tile 28</div>
-    <div class="tile color-29" id="tile29">Tile 29</div>
-    <div class="tile color-30" id="tile30">Tile 30</div>
-    <div class="tile color-31" id="tile31">Tile 31</div>
-    <div class="tile color-32" id="tile32">Tile 32</div>
-    <div class="tile color-33" id="tile33">Tile 33</div>
-    <div class="tile color-34" id="tile34">Tile 34</div>
-    <div class="tile color-35" id="tile35">Tile 35</div>
-    <div class="tile color-36" id="tile36">Tile 36</div>
-    <div class="tile color-37" id="tile37">Tile 37</div>
-    <div class="tile color-38" id="tile38">Tile 38</div>
-    <div class="tile color-39" id="tile39">Tile 39</div>
-    <div class="tile color-40" id="tile40">Tile 40</div>
-    <div class="tile color-41" id="tile41">Tile 41</div>
-    <div class="tile color-42" id="tile42">Tile 42</div>
-    <div class="tile color-43" id="tile43">Tile 43</div>
-    <div class="tile color-44" id="tile44">Tile 44</div>
-    <div class="tile color-45" id="tile45">Tile 45</div>
-    <div class="tile color-46" id="tile46">Tile 46</div>
-    <div class="tile color-47" id="tile47">Tile 47</div>
-    <div class="tile color-48" id="tile48">Tile 48</div>
-    <div class="tile color-49" id="tile49">Tile 49</div>
-    <div class="tile color-50" id="tile50">Tile 50</div>
-  </section>
-<footer>
-  <p>&copy; 2025 OpenB Project</p>
-</footer>
-function byId(id){return document.getElementById(id);}
-function openPage(url){window.location.href=url;}
-function applyTheme(){document.body.classList.toggle("dark");}
-function handleTile(id,action){byId(id).addEventListener("click",action);}
-document.addEventListener("DOMContentLoaded",()=>{
-  handleTile("tile1",()=>openPage("info.html"));
-  handleTile("tile2",()=>openPage("downloads.html"));
-  handleTile("tile3",()=>openPage("news.html"));
-  handleTile("tile4",()=>openPage("devtools.html"));
-  handleTile("tile5",()=>openPage("extensions.html"));
-  handleTile("tile6",()=>alert("Tile 6 clicked"));
-  handleTile("tile7",()=>alert("Tile 7 clicked"));
-  handleTile("tile8",()=>alert("Tile 8 clicked"));
-  handleTile("tile9",()=>alert("Tile 9 clicked"));
-  handleTile("tile10",()=>alert("Tile 10 clicked"));
-  handleTile("tile11",()=>alert("Tile 11 clicked"));
-  handleTile("tile12",()=>alert("Tile 12 clicked"));
-  handleTile("tile13",()=>alert("Tile 13 clicked"));
-  handleTile("tile14",()=>alert("Tile 14 clicked"));
-  handleTile("tile15",()=>alert("Tile 15 clicked"));
-  handleTile("tile16",()=>alert("Tile 16 clicked"));
-  handleTile("tile17",()=>alert("Tile 17 clicked"));
-  handleTile("tile18",()=>alert("Tile 18 clicked"));
-  handleTile("tile19",()=>alert("Tile 19 clicked"));
-  handleTile("tile20",()=>alert("Tile 20 clicked"));
-  handleTile("tile21",()=>alert("Tile 21 clicked"));
-  handleTile("tile22",()=>alert("Tile 22 clicked"));
-  handleTile("tile23",()=>alert("Tile 23 clicked"));
-  handleTile("tile24",()=>alert("Tile 24 clicked"));
-  handleTile("tile25",()=>alert("Tile 25 clicked"));
-  handleTile("tile26",()=>alert("Tile 26 clicked"));
-  handleTile("tile27",()=>alert("Tile 27 clicked"));
-  handleTile("tile28",()=>alert("Tile 28 clicked"));
-  handleTile("tile29",()=>alert("Tile 29 clicked"));
-  handleTile("tile30",()=>alert("Tile 30 clicked"));
-  handleTile("tile31",()=>alert("Tile 31 clicked"));
-  handleTile("tile32",()=>alert("Tile 32 clicked"));
-  handleTile("tile33",()=>alert("Tile 33 clicked"));
-  handleTile("tile34",()=>alert("Tile 34 clicked"));
-  handleTile("tile35",()=>alert("Tile 35 clicked"));
-  handleTile("tile36",()=>alert("Tile 36 clicked"));
-  handleTile("tile37",()=>alert("Tile 37 clicked"));
-  handleTile("tile38",()=>alert("Tile 38 clicked"));
-  handleTile("tile39",()=>alert("Tile 39 clicked"));
-  handleTile("tile40",()=>alert("Tile 40 clicked"));
-  handleTile("tile41",()=>alert("Tile 41 clicked"));
-  handleTile("tile42",()=>alert("Tile 42 clicked"));
-  handleTile("tile43",()=>alert("Tile 43 clicked"));
-  handleTile("tile44",()=>alert("Tile 44 clicked"));
-  handleTile("tile45",()=>alert("Tile 45 clicked"));
-  handleTile("tile46",()=>alert("Tile 46 clicked"));
-  handleTile("tile47",()=>alert("Tile 47 clicked"));
-  handleTile("tile48",()=>alert("Tile 48 clicked"));
-  handleTile("tile49",()=>alert("Tile 49 clicked"));
-  handleTile("tile50",()=>alert("Tile 50 clicked"));
-  byId("theme-btn").addEventListener("click",applyTheme);
-  byId("search-input").addEventListener("keydown",e=>{
-    if(e.key==="Enter"){
-      const q=e.target.value.trim();
-      if(q.startsWith("http://")||q.startsWith("https://"))
-        window.location.href=q;
-      else window.location.href="https://duckduckgo.com/?q="+encodeURIComponent(q);
-    }
-  });
-});
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
-<!-- filler -->
+  <header>
+    <h1>Welcome to OpenB</h1>
+  </header>
+  <nav>
+    <a href="downloads.html">Downloads</a>
+    <a href="news.html">News</a>
+    <a href="devtools.html">DevTools</a>
+    <a href="extensions.html">Extensions</a>
+    <button id="theme-btn">Toggle Theme</button>
+  </nav>
+  <main>
+    <section id="search-section">
+      <input id="search-input" placeholder="Search or enter address"/>
+    </section>
+    <section class="tiles" id="tiles"></section>
+  </main>
+  <footer>
+    <p>&copy; 2025 OpenB Project</p>
+  </footer>
+  <script>
+    function byId(id){return document.getElementById(id);}
+    function openPage(url){window.location.href=url;}
+    function applyTheme(){document.body.classList.toggle("dark");}
+    function addTile(n,text,url){
+      const tile=document.createElement("div");
+      tile.className="tile";
+      tile.style.backgroundColor=`hsl(${(n*12)%360},60%,90%)`;
+      tile.textContent=text;
+      tile.addEventListener("click",()=>openPage(url));
+      byId("tiles").appendChild(tile);
+    document.addEventListener("DOMContentLoaded",()=>{
+      const links=[
+        ["Info","info.html"],
+        ["Downloads","downloads.html"],
+        ["News","news.html"],
+        ["DevTools","devtools.html"],
+        ["Extensions","extensions.html"]
+      ];
+      for(let i=0;i<30;i++){
+        const [text,url]=links[i%links.length];
+        addTile(i+1,`${text} ${i+1}`,url);
+      }
+      byId("theme-btn").addEventListener("click",applyTheme);
+      byId("search-input").addEventListener("keydown",e=>{
+        if(e.key==="Enter"){
+          const q=e.target.value.trim();
+          if(q.startsWith("http://")||q.startsWith("https://"))
+            window.location.href=q;
+          else
+            window.location.href="https://duckduckgo.com/?q="+encodeURIComponent(q);
+        }
+      });
+    });
+  </script>

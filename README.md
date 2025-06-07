@@ -34,10 +34,11 @@ Run the compiled binary:
 ```
 
 The browser opens on an interactive home page located in `data/home.html`.
-This page consists of roughly **five hundred lines** of HTML, CSS and
-JavaScript. A search box sits above fifty colourful tiles that link to
-`downloads.html`, `news.html`, `devtools.html` and `extensions.html`. Each tile
-logs a short message when clicked so you can confirm the JavaScript is working.
+This page consists of roughly **eighty lines** of HTML, CSS and JavaScript.
+A search box sits above thirty colourful tiles generated with JavaScript that
+link to `downloads.html`, `news.html`, `devtools.html` and `extensions.html`.
+Each tile logs a short message when clicked so you can confirm the JavaScript
+is working.
 When
 installed via the net installer the entire `data` folder is copied to
 `/usr/local/share/openb` so the pages work even when you run the browser outside
