@@ -3,7 +3,10 @@
 #include <webkit2/webkit2.h>
 #include <glib/gstdio.h>
 #include <signal.h>
+#include <gio/gio.h>
 #include "manager.h"
+
+#define BACKEND_PORT 8080
 
 static WebKitWebView *web_view;
 static GtkEntry *url_entry;
@@ -76,15 +79,32 @@ static void ensure_python_env(void) {
 static gboolean start_backend_server(void) {
     if (server_pid)
         return TRUE;
+    /* If another instance is serving the backend just reuse it */
+    GSocketClient *client = g_socket_client_new();
+    GError *conn_err = NULL;
+    GSocketConnection *conn = g_socket_client_connect_to_host(client,
+                                "127.0.0.1", BACKEND_PORT,
+                                NULL, &conn_err);
+    if (conn) {
+        g_object_unref(conn);
+        g_object_unref(client);
+        return TRUE;
+    }
+    if (conn_err)
+        g_error_free(conn_err);
+    g_object_unref(client);
     ensure_python_env();
     server_path = find_root_file("server.py");
     if (!server_path || !venv_python)
         return FALSE;
     gchar *cmd = g_strdup_printf("'%s' '%s'", venv_python, server_path);
     gchar *dir = g_path_get_dirname(server_path);
+    gchar *env_port = g_strdup_printf("OPENB_PORT=%d", BACKEND_PORT);
+    gchar *envp[] = { env_port, NULL };
     GError *err = NULL;
-    gboolean ok = g_spawn_async(dir, (gchar *[]){"/bin/sh","-c",cmd,NULL}, NULL,
+    gboolean ok = g_spawn_async(dir, (gchar *[]){"/bin/sh","-c",cmd,NULL}, envp,
                                G_SPAWN_DO_NOT_REAP_CHILD, NULL, NULL, &server_pid, &err);
+    g_free(env_port);
     g_free(dir);
     g_free(cmd);
     if (!ok) {

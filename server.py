@@ -9,7 +9,7 @@ import json
 import logging
 from logging.handlers import RotatingFileHandler
 
-PORT = 8080
+PORT = int(os.environ.get('OPENB_PORT', '8080'))
 LOG_DIR = os.path.join(os.path.expanduser('~'), '.cache', 'openb')
 os.makedirs(LOG_DIR, exist_ok=True)
 LOG_FILE = os.path.join(LOG_DIR, 'server.log')
@@ -88,10 +88,15 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    with socketserver.ThreadingTCPServer(("", PORT), Handler) as httpd:
-        logger.info("Serving at http://localhost:%d/", PORT)
-        try:
-            httpd.serve_forever()
-        except KeyboardInterrupt:
-            pass
-        logger.info("Server stopped")
+    try:
+        with socketserver.ThreadingTCPServer(("", PORT), Handler) as httpd:
+            logger.info("Serving at http://localhost:%d/", PORT)
+            try:
+                httpd.serve_forever()
+            except KeyboardInterrupt:
+                pass
+            logger.info("Server stopped")
+    except OSError as e:
+        logger.error("Failed to bind to port %d: %s", PORT, e)
+        print(f"Server error: {e}")
+        raise SystemExit(1)
