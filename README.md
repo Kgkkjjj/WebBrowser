@@ -21,11 +21,16 @@ On **Arch Linux**:
 sudo pacman -S base-devel gtk3 webkit2gtk
 ```
 
-Build the application with:
+Build the application from the top level of the source tree with:
 
 ```bash
 make
 ```
+If you see `make: *** No targets specified and no makefile found.  Stop.`
+ensure that you are running the command inside the OpenB source
+directory where `Makefile` resides.  Releases installed with
+`net_installer.sh` already contain a prebuilt binary so they do not
+include the Makefile.
 
 ## Running
 
@@ -88,18 +93,22 @@ available, an error dialog is shown.
 
 ## Net Installer
 
-A script `net_installer.sh` installs OpenB from the internet without compiling.
-It downloads the latest release archive, extracts it and installs the `openb`
-binary to `/usr/local/bin`. The complete `data` directory is copied to
-`/usr/local/share/openb` so the start page works when running outside the source
-tree. Any JavaScript files from `extensions` are installed to
-`/usr/local/share/openb/extensions`.
+A script `net_installer.sh` installs OpenB from the internet by cloning the
+source, compiling it and copying the files into standard locations.  The
+`openb` binary is installed to `/usr/local/bin` and the `data` directory is
+copied to `/usr/local/share/openb` so the home page works when running outside
+the source tree.  Any JavaScript files from `extensions` are installed to
+`/usr/local/share/openb/extensions` alongside `server.py` for the search
+backend.
 
 Run it with:
 
 ```bash
 ./net_installer.sh
 ```
+
+The script requires `git`, `make` and a working C compiler. It will fetch the
+latest code, build the browser and install it system wide.
 
 Root privileges are required for the installation step. Ensure the required build
 dependencies for GTK and WebKit2GTK are installed on your system.
