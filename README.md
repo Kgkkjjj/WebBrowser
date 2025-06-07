@@ -128,8 +128,9 @@ OpenB ships with several tools for debugging web pages:
 - **Close Tab** (Ctrl+W)
 - **Private Window** (Ctrl+Shift+N)
 
-Additional features include automatic spell checking, blocking of common tracking scripts,
-session restoration across launches and built-in pop-up blocking.
+Spell checking can be enabled if dictionaries are installed. OpenB also blocks
+common tracking scripts, restores sessions across launches and includes
+built-in pop-up blocking.
 
 Extensions are simple JavaScript files placed in `extensions/`. They are
 injected into every page when the browser starts. Use the **Extensions** button

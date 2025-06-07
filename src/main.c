@@ -55,10 +55,6 @@ static void adjust_window_size(void) {
         geom.y + (geom.height - h) / 2);
 }
 
-static void monitor_changed(GdkDisplay *display, gpointer data) {
-    adjust_window_size();
-}
-
 static void window_realized(GtkWidget *w, gpointer data) {
     adjust_window_size();
 }
@@ -107,14 +103,27 @@ static GtkWidget *popup_requested(WebKitWebView *view, WebKitNavigationAction *a
     return NULL;
 }
 
-static gboolean block_trackers(WebKitWebView *view, WebKitWebResource *res, WebKitURIRequest *req, gpointer data) {
+static gboolean block_trackers(WebKitWebResource *res, WebKitURIRequest *req,
+                               WebKitURIResponse *redirected, gpointer data) {
     const gchar *uri = webkit_uri_request_get_uri(req);
-    const gchar *blocked[] = {"google-analytics.com", "doubleclick.net", "adservice.google.com", NULL};
+    const gchar *blocked[] = {
+        "google-analytics.com",
+        "doubleclick.net",
+        "adservice.google.com",
+        NULL
+    };
     for (int i = 0; blocked[i]; i++) {
-        if (g_strstr_len(uri, -1, blocked[i]))
-            return TRUE;
+        if (g_strstr_len(uri, -1, blocked[i])) {
+            webkit_uri_request_set_uri(req, "about:blank");
+            return FALSE;
+        }
     }
     return FALSE;
+}
+
+static void resource_started(WebKitWebView *view, WebKitWebResource *res,
+                             WebKitURIRequest *req, gpointer data) {
+    g_signal_connect(res, "send-request", G_CALLBACK(block_trackers), NULL);
 }
 
 static gchar *home_file_uri = NULL;
@@ -835,7 +844,7 @@ static void new_tab(GtkWidget *w, gpointer d) {
     g_signal_connect(view, "load-failed", G_CALLBACK(load_failed), NULL);
     g_signal_connect(view, "mouse-target-changed", G_CALLBACK(mouse_target_changed), NULL);
     webkit_settings_set_javascript_can_open_windows_automatically(webkit_web_view_get_settings(view), FALSE);
-    g_signal_connect(view, "send-request", G_CALLBACK(block_trackers), NULL);
+    g_signal_connect(view, "resource-load-started", G_CALLBACK(resource_started), NULL);
     g_signal_connect(view, "create", G_CALLBACK(popup_requested), NULL);
 }
 
@@ -887,7 +896,7 @@ int main(int argc, char *argv[]) {
     } else {
         context = webkit_web_context_new_ephemeral();
     }
-    webkit_web_context_set_spell_checking_enabled(context, TRUE);
+    webkit_web_context_set_spell_checking_enabled(context, FALSE);
     webkit_web_context_set_cache_model(context, WEBKIT_CACHE_MODEL_DOCUMENT_BROWSER);
     g_signal_connect(context, "download-started", G_CALLBACK(download_started), NULL);
 
@@ -1164,7 +1173,7 @@ int main(int argc, char *argv[]) {
     load_extensions(webkit_web_view_get_user_content_manager(web_view));
     webkit_settings_set_enable_developer_extras(webkit_web_view_get_settings(web_view), TRUE);
     webkit_settings_set_javascript_can_open_windows_automatically(webkit_web_view_get_settings(web_view), FALSE);
-    g_signal_connect(web_view, "send-request", G_CALLBACK(block_trackers), NULL);
+    g_signal_connect(web_view, "resource-load-started", G_CALLBACK(resource_started), NULL);
     g_signal_connect(web_view, "create", G_CALLBACK(popup_requested), NULL);
     g_signal_connect(back, "clicked", G_CALLBACK(navigate_back), NULL);
     g_signal_connect(forward, "clicked", G_CALLBACK(navigate_forward), NULL);
@@ -1228,9 +1237,6 @@ int main(int argc, char *argv[]) {
 
     g_signal_connect(window, "destroy", G_CALLBACK(gtk_main_quit), NULL);
     g_signal_connect(window, "realize", G_CALLBACK(window_realized), NULL);
-    GdkDisplay *disp = gdk_display_get_default();
-    if (disp)
-        g_signal_connect(disp, "monitors-changed", G_CALLBACK(monitor_changed), NULL);
     load_session();
     if (!session_file || !g_file_test(session_file, G_FILE_TEST_EXISTS))
         load_home_page();
