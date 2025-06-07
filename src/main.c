@@ -67,7 +67,7 @@ static void ensure_python_env(void) {
         manager_run_command(cmd, NULL);
         g_free(cmd);
         gchar *pip = g_build_filename(venv_dir, "bin", "pip", NULL);
-        cmd = g_strdup_printf("'%s' install -q requests", pip);
+        cmd = g_strdup_printf("'%s' install -q requests flask fastapi uvicorn", pip);
         manager_run_command(cmd, NULL);
         g_free(cmd);
         g_free(pip);

@@ -1,15 +1,19 @@
 #!/usr/bin/env python3
-"""Simple backend for OpenB home and search pages."""
-import http.server
-import socketserver
-import requests
-from urllib.parse import urlparse, parse_qs, quote
+"""Combined backend using Flask and FastAPI for OpenB."""
 import os
 import json
 import logging
 from logging.handlers import RotatingFileHandler
 
+import requests
+from flask import Flask, send_from_directory
+from fastapi import FastAPI, Response
+from fastapi.middleware.wsgi import WSGIMiddleware
+import uvicorn
+
 PORT = int(os.environ.get('OPENB_PORT', '8080'))
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_DIR = os.path.join(BASE_DIR, 'data')
 LOG_DIR = os.path.join(os.path.expanduser('~'), '.cache', 'openb')
 os.makedirs(LOG_DIR, exist_ok=True)
 LOG_FILE = os.path.join(LOG_DIR, 'server.log')
@@ -20,89 +24,63 @@ handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(message)s'))
 logger.addHandler(handler)
 logger.setLevel(logging.INFO)
 
+flask_app = Flask(__name__)
+
+@flask_app.route('/')
+def home():
+    return send_from_directory(DATA_DIR, 'home.html')
+
+@flask_app.route('/<path:fname>')
+def pages(fname):
+    return send_from_directory(DATA_DIR, fname)
+
+api = FastAPI()
+
 tab_count = 1
 
-class Handler(http.server.SimpleHTTPRequestHandler):
-    def log_message(self, fmt, *args):
-        logger.info("%s - %s" % (self.address_string(), fmt % args))
+@api.get('/search')
+def api_search(q: str = ''):
+    api_url = 'https://api.duckduckgo.com/?q=%s&format=json&no_redirect=1&no_html=1' % requests.utils.quote(q)
+    try:
+        resp = requests.get(api_url, timeout=5)
+        resp.raise_for_status()
+        return Response(resp.content, media_type='application/json')
+    except Exception as e:
+        logger.error('search request failed: %s', e)
+        return Response(json.dumps({'error': 'search-failed'}), status_code=502, media_type='application/json')
 
-    def _cors(self):
-        self.send_header('Access-Control-Allow-Origin', '*')
-        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
-        self.send_header('Access-Control-Allow-Methods', 'GET, OPTIONS')
+@api.get('/status')
+def api_status():
+    return {'tabs': tab_count, 'status': 'ok'}
 
-    def do_OPTIONS(self):
-        self.send_response(200)
-        self._cors()
-        self.end_headers()
+@api.get('/update_tabs')
+def api_update_tabs(count: int = 1):
+    global tab_count
+    try:
+        tab_count = int(count)
+    except ValueError:
+        tab_count = 1
+    return {'ok': True}
 
-    def do_GET(self):
-        global tab_count
-        parsed = urlparse(self.path)
-        try:
-            if parsed.path == '/search':
-                q = parse_qs(parsed.query).get('q', [''])[0]
-                api = f"https://api.duckduckgo.com/?q={quote(q)}&format=json&no_redirect=1&no_html=1"
-                try:
-                    resp = requests.get(api, timeout=5)
-                    resp.raise_for_status()
-                    data = resp.content
-                    self.send_response(200)
-                except Exception as err:
-                    logger.error('search request failed: %s', err)
-                    data = json.dumps({'error': 'search-failed'}).encode()
-                    self.send_response(502)
-                self._cors()
-                self.send_header('Content-Type', 'application/json')
-                self.end_headers()
-                self.wfile.write(data)
-            elif parsed.path == '/status':
-                self.send_response(200)
-                self._cors()
-                self.send_header('Content-Type', 'application/json')
-                self.end_headers()
-                self.wfile.write(json.dumps({'tabs': tab_count, 'status': 'ok'}).encode())
-            elif parsed.path == '/update_tabs':
-                try:
-                    tab_count = int(parse_qs(parsed.query).get('count',[tab_count])[0])
-                except ValueError:
-                    tab_count = 1
-                self.send_response(200)
-                self._cors()
-                self.end_headers()
-            elif parsed.path == '/log':
-                self.send_response(200)
-                self._cors()
-                self.send_header('Content-Type', 'text/plain')
-                self.end_headers()
-                try:
-                    with open(LOG_FILE, 'r') as f:
-                        self.wfile.write(f.read().encode())
-                except FileNotFoundError:
-                    self.wfile.write(b'')
-            else:
-                if parsed.path == '/':
-                    self.path = '/data/home.html'
-                return http.server.SimpleHTTPRequestHandler.do_GET(self)
-        except Exception as e:
-            logger.exception('handler error')
-            self.send_response(500)
-            self._cors()
-            self.send_header('Content-Type', 'application/json')
-            self.end_headers()
-            self.wfile.write(json.dumps({'error': str(e)}).encode())
+@api.get('/log')
+def api_log():
+    try:
+        with open(LOG_FILE, 'r') as f:
+            data = f.read()
+    except FileNotFoundError:
+        data = ''
+    return Response(data, media_type='text/plain')
+
+app = FastAPI()
+app.mount('/', WSGIMiddleware(flask_app))
+for route in api.router.routes:
+    app.router.routes.append(route)
 
 if __name__ == '__main__':
-    os.chdir(os.path.dirname(os.path.abspath(__file__)))
     try:
-        with socketserver.ThreadingTCPServer(("", PORT), Handler) as httpd:
-            logger.info("Serving at http://localhost:%d/", PORT)
-            try:
-                httpd.serve_forever()
-            except KeyboardInterrupt:
-                pass
-            logger.info("Server stopped")
-    except OSError as e:
-        logger.error("Failed to bind to port %d: %s", PORT, e)
-        print(f"Server error: {e}")
+        logger.info('Serving at http://localhost:%d/', PORT)
+        uvicorn.run(app, host='0.0.0.0', port=PORT, log_level='warning')
+    except Exception as e:
+        logger.error('Server error: %s', e)
+        print(f'Server error: {e}')
         raise SystemExit(1)

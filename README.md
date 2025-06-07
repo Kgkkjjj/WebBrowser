@@ -47,17 +47,15 @@ A search box sits above thirty colourful tiles generated with JavaScript that
 link to `downloads.html`, `news.html`, `devtools.html` and `extensions.html`.
 Each tile logs a short message when clicked so you can confirm the JavaScript
 is working. Queries entered in the search box open `search.html`.
-Both the home page and search page rely on a small backend server that proxies
-requests to the DuckDuckGo API. OpenB automatically creates a Python virtual
-environment under `~/.local/share/openb/venv`, installs the `requests`
-dependency, and starts `server.py` on `http://localhost:8080/` when the browser
-launches. Set `OPENB_PORT` to override this. If the port is already in use the
-server prints an error and the browser reuses the existing instance. The server
-serves the pages from the `data` directory and exposes a
-`/search` endpoint used by the JavaScript code. It also provides `/status` and
-`/log` for health checks and reviewing the backend log. The tab count can be
-updated through `/update_tabs`. All requests and errors are written to
-`~/.cache/openb/server.log`. If the backend is unavailable or returns an error,
+All pages are served by a small Python backend built with Flask and FastAPI. It
+also proxies search requests to the DuckDuckGo API. OpenB automatically creates
+a virtual environment under `~/.local/share/openb/venv`, installs `requests`,
+`flask`, `fastapi` and `uvicorn`, and starts `server.py` on
+`http://localhost:8080/` when the browser launches. Set `OPENB_PORT` to override
+this. If the port is already in use the browser connects to the existing
+instance. The server exposes `/search`, `/status`, `/update_tabs` and `/log`
+endpoints and writes all activity to `~/.cache/openb/server.log`. If the backend
+is unavailable or returns an error,
 the search page automatically redirects to `https://duckduckgo.com` so queries
 always succeed.
 When installed via the net installer the entire `data` folder and `server.py`
@@ -106,8 +104,8 @@ source, compiling it and copying the files into standard locations.  The
 `openb` binary is installed to `/usr/local/bin` and the `data` directory is
 copied to `/usr/local/share/openb` so the home page works when running outside
 the source tree.  Any JavaScript files from `extensions` are installed to
-`/usr/local/share/openb/extensions` alongside `server.py` for the search
-backend.
+`/usr/local/share/openb/extensions` alongside `server.py` for the integrated
+backend that serves the pages and search API.
 
 Run it with:
 
