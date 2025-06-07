@@ -1,6 +1,7 @@
 #include <gtk/gtk.h>
 #include <gdk/gdkkeysyms.h>
 #include <webkit2/webkit2.h>
+#include <glib/gstdio.h>
 #include "manager.h"
 
 static WebKitWebView *web_view;
@@ -103,7 +104,7 @@ static GtkWidget *popup_requested(WebKitWebView *view, WebKitNavigationAction *a
     return NULL;
 }
 
-static gboolean block_trackers(WebKitWebResource *res, WebKitURIRequest *req,
+static gboolean block_trackers(WebKitWebView *view, WebKitURIRequest *req,
                                WebKitURIResponse *redirected, gpointer data) {
     const gchar *uri = webkit_uri_request_get_uri(req);
     const gchar *blocked[] = {
@@ -119,11 +120,6 @@ static gboolean block_trackers(WebKitWebResource *res, WebKitURIRequest *req,
         }
     }
     return FALSE;
-}
-
-static void resource_started(WebKitWebView *view, WebKitWebResource *res,
-                             WebKitURIRequest *req, gpointer data) {
-    g_signal_connect(res, "send-request", G_CALLBACK(block_trackers), NULL);
 }
 
 static gchar *home_file_uri = NULL;
@@ -237,9 +233,9 @@ static gboolean load_changed(WebKitWebView *view, WebKitLoadEvent event, gpointe
         gtk_widget_hide(progress_bar);
         gtk_label_set_text(GTK_LABEL(status_label), "Done");
         if (dark_mode) {
-            webkit_web_view_run_javascript(view,
+            webkit_web_view_evaluate_javascript(view,
                 "document.documentElement.style.filter='invert(1) hue-rotate(180deg)';",
-                NULL, NULL, NULL);
+                -1, NULL, NULL, NULL, NULL, NULL);
         }
     }
     return FALSE;
@@ -350,8 +346,13 @@ static void clear_cache(GtkWidget *widget, gpointer data) {
 
 static void clear_cookies(GtkWidget *widget, gpointer data) {
     WebKitWebContext *ctx = webkit_web_view_get_context(web_view);
-    WebKitCookieManager *cm = webkit_web_context_get_cookie_manager(ctx);
-    webkit_cookie_manager_delete_all_cookies(cm);
+    WebKitWebsiteDataManager *dm = webkit_web_context_get_website_data_manager(ctx);
+    webkit_website_data_manager_clear(dm,
+        WEBKIT_WEBSITE_DATA_COOKIES,
+        0,
+        NULL,
+        NULL,
+        NULL);
     gtk_label_set_text(GTK_LABEL(status_label), "Cookies Cleared");
 }
 
@@ -409,7 +410,7 @@ static void screenshot_page(GtkWidget *widget, gpointer data) {
 
 static void picture_in_picture(GtkWidget *widget, gpointer data) {
     const gchar *js = "var v=document.querySelector('video'); if(v){v.requestPictureInPicture();}";
-    webkit_web_view_run_javascript(web_view, js, NULL, NULL, NULL);
+    webkit_web_view_evaluate_javascript(web_view, js, -1, NULL, NULL, NULL, NULL, NULL);
 }
 
 static void show_search_history(GtkWidget *widget, gpointer data) {
@@ -505,25 +506,18 @@ static void show_tasks_manager(GtkWidget *widget, gpointer data) {
 }
 
 static gboolean perform_update(void) {
-    if (!g_find_program_in_path("git") || !g_find_program_in_path("make")) {
+    if (!g_find_program_in_path("curl") && !g_find_program_in_path("wget")) {
         GtkWidget *err = gtk_message_dialog_new(GTK_WINDOW(main_window),
             GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT,
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_CLOSE,
-            "git and make are required for updating.");
+            "curl or wget is required for updating.");
         gtk_dialog_run(GTK_DIALOG(err));
         gtk_widget_destroy(err);
         return FALSE;
     }
 
-    if (!g_file_test(".git", G_FILE_TEST_IS_DIR)) {
-        GtkWidget *err = gtk_message_dialog_new(GTK_WINDOW(main_window),
-            GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT,
-            GTK_MESSAGE_ERROR,
-            GTK_BUTTONS_CLOSE,
-            "No git repository found. Update cannot continue.");
-        gtk_dialog_run(GTK_DIALOG(err));
-        gtk_widget_destroy(err);
+    if (!program_path) {
         return FALSE;
     }
 
@@ -531,25 +525,92 @@ static gboolean perform_update(void) {
         GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT,
         GTK_MESSAGE_INFO,
         GTK_BUTTONS_NONE,
-        "Updating OpenB...\nThis may take a moment.");
+        "Downloading OpenB update...\nThis may take a moment.");
     gtk_widget_show(info);
     while (gtk_events_pending())
         gtk_main_iteration();
 
-    const gchar *cmd[] = {"/bin/sh", "-c", "git pull --rebase && make", NULL};
+    gchar *tmpdir = g_dir_make_tmp("openb-update-XXXXXX", NULL);
+    if (!tmpdir) {
+        gtk_widget_destroy(info);
+        return FALSE;
+    }
+
+    gchar *archive = g_build_filename(tmpdir, "openb.tar.gz", NULL);
+    const gchar *url = "https://github.com/Kgkkjjj/WebBrowser/releases/latest/download/openb.tar.gz";
+    gchar *cmd;
+    if (g_find_program_in_path("curl"))
+        cmd = g_strdup_printf("curl -L '%s' -o '%s'", url, archive);
+    else
+        cmd = g_strdup_printf("wget -O '%s' '%s'", archive, url);
+
     gint status = 0;
     GError *error = NULL;
-    g_spawn_sync(NULL, (gchar **)cmd, NULL, G_SPAWN_SEARCH_PATH,
+    const gchar *argv_dl[] = {"/bin/sh", "-c", cmd, NULL};
+    g_spawn_sync(NULL, (gchar **)argv_dl, NULL, G_SPAWN_SEARCH_PATH,
                  NULL, NULL, NULL, NULL, &status, &error);
+    g_free(cmd);
 
-    gtk_widget_destroy(info);
-
-    if (error || status != 0) {
+    if (status != 0 || error) {
+        gtk_widget_destroy(info);
         GtkWidget *fail = gtk_message_dialog_new(GTK_WINDOW(main_window),
             GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT,
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_CLOSE,
-            "Update failed: %s", error ? error->message : "unknown error");
+            "Download failed: %s", error ? error->message : "unknown error");
+        gtk_dialog_run(GTK_DIALOG(fail));
+        gtk_widget_destroy(fail);
+        if (error)
+            g_error_free(error);
+        g_free(archive);
+        g_rmdir(tmpdir);
+        g_free(tmpdir);
+        return FALSE;
+    }
+
+    const gchar *argv_extract[] = {"/bin/sh", "-c",
+        g_strdup_printf("tar -xzf '%s' -C '%s'", archive, tmpdir), NULL};
+    g_spawn_sync(NULL, (gchar **)argv_extract, NULL, G_SPAWN_SEARCH_PATH,
+                 NULL, NULL, NULL, NULL, &status, &error);
+    g_free((gpointer)argv_extract[2]);
+
+    if (status != 0 || error) {
+        gtk_widget_destroy(info);
+        GtkWidget *fail = gtk_message_dialog_new(GTK_WINDOW(main_window),
+            GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT,
+            GTK_MESSAGE_ERROR,
+            GTK_BUTTONS_CLOSE,
+            "Extraction failed: %s", error ? error->message : "unknown error");
+        gtk_dialog_run(GTK_DIALOG(fail));
+        gtk_widget_destroy(fail);
+        if (error)
+            g_error_free(error);
+        g_free(archive);
+        g_rmdir(tmpdir);
+        g_free(tmpdir);
+        return FALSE;
+    }
+
+    gchar *new_binary = g_build_filename(tmpdir, "openb", NULL);
+    gchar *install_cmd = g_strdup_printf("install -m 755 '%s' '%s'", new_binary, program_path);
+    const gchar *argv_install[] = {"/bin/sh", "-c", install_cmd, NULL};
+    g_spawn_sync(NULL, (gchar **)argv_install, NULL, G_SPAWN_SEARCH_PATH,
+                 NULL, NULL, NULL, NULL, &status, &error);
+    g_free(install_cmd);
+
+    gtk_widget_destroy(info);
+
+    g_free(archive);
+    g_free(new_binary);
+    g_remove(tmpdir);
+    g_free(tmpdir);
+
+    if (status != 0 || error) {
+        GtkWidget *fail = gtk_message_dialog_new(GTK_WINDOW(main_window),
+            GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT,
+            GTK_MESSAGE_ERROR,
+            GTK_BUTTONS_CLOSE,
+            "Install failed: %s", error ? error->message : "unknown error");
         gtk_dialog_run(GTK_DIALOG(fail));
         gtk_widget_destroy(fail);
         if (error)
@@ -572,7 +633,7 @@ static void check_for_updates(GtkWidget *widget, gpointer data) {
         GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT,
         GTK_MESSAGE_QUESTION,
         GTK_BUTTONS_YES_NO,
-        "Check for updates and rebuild?");
+        "Download and install the latest OpenB release?");
     gint res = gtk_dialog_run(GTK_DIALOG(confirm));
     gtk_widget_destroy(confirm);
     if (res == GTK_RESPONSE_YES)
@@ -692,12 +753,12 @@ static void toggle_dark_mode(GtkWidget *widget, gpointer data) {
     const gchar *js = dark_mode ?
         "document.documentElement.style.filter='invert(1) hue-rotate(180deg)';" :
         "document.documentElement.style.filter='';";
-    webkit_web_view_run_javascript(web_view, js, NULL, NULL, NULL);
+    webkit_web_view_evaluate_javascript(web_view, js, -1, NULL, NULL, NULL, NULL, NULL);
 }
 
 static void toggle_reader_mode(GtkWidget *w, gpointer d) {
     const gchar *script = "document.body.innerHTML='<article style=\"margin:2em;\">'+document.body.innerText+'</article>'";
-    webkit_web_view_run_javascript(web_view, script, NULL, NULL, NULL);
+    webkit_web_view_evaluate_javascript(web_view, script, -1, NULL, NULL, NULL, NULL, NULL);
 }
 
 static void page_info(GtkWidget *widget, gpointer data) {
@@ -794,6 +855,10 @@ static void save_session(void) {
     if (!session_file)
         return;
     GString *out = g_string_new("");
+    if (!notebook) {
+        g_string_free(out, TRUE);
+        return;
+    }
     int pages = gtk_notebook_get_n_pages(notebook);
     for (int i = 0; i < pages; i++) {
         WebKitWebView *wv = WEBKIT_WEB_VIEW(gtk_notebook_get_nth_page(notebook, i));
@@ -844,13 +909,13 @@ static void new_tab(GtkWidget *w, gpointer d) {
     g_signal_connect(view, "load-failed", G_CALLBACK(load_failed), NULL);
     g_signal_connect(view, "mouse-target-changed", G_CALLBACK(mouse_target_changed), NULL);
     webkit_settings_set_javascript_can_open_windows_automatically(webkit_web_view_get_settings(view), FALSE);
-    g_signal_connect(view, "resource-load-started", G_CALLBACK(resource_started), NULL);
+    g_signal_connect(view, "send-request", G_CALLBACK(block_trackers), NULL);
     g_signal_connect(view, "create", G_CALLBACK(popup_requested), NULL);
 }
 
 static void close_tab(GtkWidget *w, gpointer d) {
     gint page = gtk_notebook_get_current_page(notebook);
-    if (gtk_notebook_get_n_pages(notebook) > 1) {
+    if (notebook && gtk_notebook_get_n_pages(notebook) > 1) {
         GtkWidget *child = gtk_notebook_get_nth_page(notebook, page);
         gtk_notebook_remove_page(notebook, page);
         if (page > 0)
@@ -911,12 +976,30 @@ int main(int argc, char *argv[]) {
     GtkAccelGroup *accel = gtk_accel_group_new();
     gtk_window_add_accel_group(GTK_WINDOW(window), accel);
 
-    GtkToolItem *back = gtk_tool_button_new_from_stock(GTK_STOCK_GO_BACK);
-    GtkToolItem *forward = gtk_tool_button_new_from_stock(GTK_STOCK_GO_FORWARD);
-    GtkToolItem *reload = gtk_tool_button_new_from_stock(GTK_STOCK_REFRESH);
-    GtkToolItem *stop = gtk_tool_button_new_from_stock(GTK_STOCK_STOP);
-    GtkToolItem *home = gtk_tool_button_new_from_stock(GTK_STOCK_HOME);
-    GtkToolItem *new_window = gtk_tool_button_new_from_stock(GTK_STOCK_NEW);
+    GtkToolItem *back = gtk_tool_button_new(NULL, "Back");
+    GtkWidget *back_icon = gtk_image_new_from_icon_name("go-previous", GTK_ICON_SIZE_LARGE_TOOLBAR);
+    gtk_tool_button_set_icon_widget(GTK_TOOL_BUTTON(back), back_icon);
+    gtk_widget_show(back_icon);
+    GtkToolItem *forward = gtk_tool_button_new(NULL, "Forward");
+    GtkWidget *forward_icon = gtk_image_new_from_icon_name("go-next", GTK_ICON_SIZE_LARGE_TOOLBAR);
+    gtk_tool_button_set_icon_widget(GTK_TOOL_BUTTON(forward), forward_icon);
+    gtk_widget_show(forward_icon);
+    GtkToolItem *reload = gtk_tool_button_new(NULL, "Reload");
+    GtkWidget *reload_icon = gtk_image_new_from_icon_name("view-refresh", GTK_ICON_SIZE_LARGE_TOOLBAR);
+    gtk_tool_button_set_icon_widget(GTK_TOOL_BUTTON(reload), reload_icon);
+    gtk_widget_show(reload_icon);
+    GtkToolItem *stop = gtk_tool_button_new(NULL, "Stop");
+    GtkWidget *stop_icon = gtk_image_new_from_icon_name("process-stop", GTK_ICON_SIZE_LARGE_TOOLBAR);
+    gtk_tool_button_set_icon_widget(GTK_TOOL_BUTTON(stop), stop_icon);
+    gtk_widget_show(stop_icon);
+    GtkToolItem *home = gtk_tool_button_new(NULL, "Home");
+    GtkWidget *home_icon = gtk_image_new_from_icon_name("go-home", GTK_ICON_SIZE_LARGE_TOOLBAR);
+    gtk_tool_button_set_icon_widget(GTK_TOOL_BUTTON(home), home_icon);
+    gtk_widget_show(home_icon);
+    GtkToolItem *new_window = gtk_tool_button_new(NULL, "New Window");
+    GtkWidget *newwin_icon = gtk_image_new_from_icon_name("window-new", GTK_ICON_SIZE_LARGE_TOOLBAR);
+    gtk_tool_button_set_icon_widget(GTK_TOOL_BUTTON(new_window), newwin_icon);
+    gtk_widget_show(newwin_icon);
     GtkToolItem *private_btn = gtk_tool_button_new(NULL, "Private Window");
     GtkWidget *priv_icon = gtk_image_new_from_icon_name("user-private", GTK_ICON_SIZE_LARGE_TOOLBAR);
     gtk_tool_button_set_icon_widget(GTK_TOOL_BUTTON(private_btn), priv_icon);
@@ -941,8 +1024,14 @@ int main(int argc, char *argv[]) {
     GtkWidget *viewsrc_icon = gtk_image_new_from_icon_name("text-x-generic", GTK_ICON_SIZE_LARGE_TOOLBAR);
     gtk_tool_button_set_icon_widget(GTK_TOOL_BUTTON(viewsrc_btn), viewsrc_icon);
     gtk_widget_show(viewsrc_icon);
-    GtkToolItem *zoom_in_btn = gtk_tool_button_new_from_stock(GTK_STOCK_ZOOM_IN);
-    GtkToolItem *zoom_out_btn = gtk_tool_button_new_from_stock(GTK_STOCK_ZOOM_OUT);
+    GtkToolItem *zoom_in_btn = gtk_tool_button_new(NULL, "Zoom In");
+    GtkWidget *zoom_in_icon = gtk_image_new_from_icon_name("zoom-in", GTK_ICON_SIZE_LARGE_TOOLBAR);
+    gtk_tool_button_set_icon_widget(GTK_TOOL_BUTTON(zoom_in_btn), zoom_in_icon);
+    gtk_widget_show(zoom_in_icon);
+    GtkToolItem *zoom_out_btn = gtk_tool_button_new(NULL, "Zoom Out");
+    GtkWidget *zoom_out_icon = gtk_image_new_from_icon_name("zoom-out", GTK_ICON_SIZE_LARGE_TOOLBAR);
+    gtk_tool_button_set_icon_widget(GTK_TOOL_BUTTON(zoom_out_btn), zoom_out_icon);
+    gtk_widget_show(zoom_out_icon);
     GtkToolItem *reset_zoom_btn = gtk_tool_button_new(NULL, "Reset Zoom");
     GtkWidget *reset_icon = gtk_image_new_from_icon_name("zoom-original", GTK_ICON_SIZE_LARGE_TOOLBAR);
     gtk_tool_button_set_icon_widget(GTK_TOOL_BUTTON(reset_zoom_btn), reset_icon);
@@ -1043,7 +1132,10 @@ int main(int argc, char *argv[]) {
     GtkWidget *tasks_icon = gtk_image_new_from_icon_name("utilities-system-monitor", GTK_ICON_SIZE_LARGE_TOOLBAR);
     gtk_tool_button_set_icon_widget(GTK_TOOL_BUTTON(tasks_btn), tasks_icon);
     gtk_widget_show(tasks_icon);
-    GtkToolItem *about = gtk_tool_button_new_from_stock(GTK_STOCK_ABOUT);
+    GtkToolItem *about = gtk_tool_button_new(NULL, "About");
+    GtkWidget *about_icon = gtk_image_new_from_icon_name("help-about", GTK_ICON_SIZE_LARGE_TOOLBAR);
+    gtk_tool_button_set_icon_widget(GTK_TOOL_BUTTON(about), about_icon);
+    gtk_widget_show(about_icon);
     GtkToolItem *separator = gtk_separator_tool_item_new();
     GtkWidget *entry_widget = gtk_entry_new();
     url_entry = GTK_ENTRY(entry_widget);
@@ -1173,7 +1265,7 @@ int main(int argc, char *argv[]) {
     load_extensions(webkit_web_view_get_user_content_manager(web_view));
     webkit_settings_set_enable_developer_extras(webkit_web_view_get_settings(web_view), TRUE);
     webkit_settings_set_javascript_can_open_windows_automatically(webkit_web_view_get_settings(web_view), FALSE);
-    g_signal_connect(web_view, "resource-load-started", G_CALLBACK(resource_started), NULL);
+    g_signal_connect(web_view, "send-request", G_CALLBACK(block_trackers), NULL);
     g_signal_connect(web_view, "create", G_CALLBACK(popup_requested), NULL);
     g_signal_connect(back, "clicked", G_CALLBACK(navigate_back), NULL);
     g_signal_connect(forward, "clicked", G_CALLBACK(navigate_forward), NULL);

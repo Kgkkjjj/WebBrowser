@@ -1,18 +1,16 @@
 #!/bin/sh
 # Net Installer for OpenB Web Browser
-# This script clones the OpenB source from the internet,
-# builds it and installs the browser. The data directory
-# is copied so the home page works when running the
-# installed binary.
+# This script downloads the latest binary release and
+# installs the browser. The data directory is copied so
+# the home page works when running the installed binary.
 
 set -e
 
-REPO_URL="https://github.com/Kgkkjjj/WebBrowser.git"
-BRANCH="codex/build-web-browser-with-gtk-3-gui"
+ARCHIVE_URL="https://github.com/Kgkkjjj/WebBrowser/releases/latest/download/openb.tar.gz"
 INSTALL_DIR="/usr/local/bin"
 SHARE_DIR="/usr/local/share/openb"
 
-for cmd in git make gcc pkg-config; do
+for cmd in curl tar; do
     command -v "$cmd" >/dev/null 2>&1 || {
         echo "$cmd is required but not installed." >&2
         exit 1
@@ -33,18 +31,15 @@ TMP_DIR=$(mktemp -d)
 trap 'rm -rf "$TMP_DIR"' EXIT
 
 cd "$TMP_DIR"
-echo "Cloning source..."
-# clone only the specified branch
-if ! git clone --branch "$BRANCH" --depth 1 "$REPO_URL" openb-source; then
-    echo "Failed to clone repository" >&2
+echo "Downloading OpenB..."
+if ! curl -L "$ARCHIVE_URL" -o openb.tar.gz; then
+    echo "Download failed" >&2
     exit 1
 fi
 
-cd openb-source
-
-echo "Building..."
-if ! make; then
-    echo "Build failed" >&2
+echo "Extracting..."
+if ! tar -xzf openb.tar.gz; then
+    echo "Extraction failed" >&2
     exit 1
 fi
 

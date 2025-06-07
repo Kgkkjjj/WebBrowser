@@ -69,21 +69,20 @@ operations. Open it with the **Tasks** toolbar button or `Ctrl+Shift+M`.
 
 ## Updating
 
-When running from a git checkout, OpenB can update itself without any external
-scripts. Simply click the **Update** button in the toolbar and confirm the
-prompt. The browser will pull the latest changes from this repository and
-rebuild automatically. If OpenB was installed without the git data available,
-an error dialog will inform you that updating is not possible.
+OpenB can update itself by downloading the latest binary release from GitHub.
+Click the **Update** button on the toolbar and confirm the prompt. The browser
+will fetch the newest archive, install it over the current executable and then
+ask you to restart. If the necessary tools (`curl` or `wget` and `tar`) are not
+available, an error dialog is shown.
 
 ## Net Installer
 
-A script `net_installer.sh` is provided for installing OpenB directly from the
-internet. It performs a shallow clone of this repository, builds the browser and
-installs the `openb` binary to `/usr/local/bin`. The entire `data`
-directory is copied to `/usr/local/share/openb` so the browser can load
-the start page even when run outside the source tree. Any files in the
-`extensions` directory are installed to `/usr/local/share/openb/extensions` so
-custom scripts work system-wide.
+A script `net_installer.sh` installs OpenB from the internet without compiling.
+It downloads the latest release archive, extracts it and installs the `openb`
+binary to `/usr/local/bin`. The complete `data` directory is copied to
+`/usr/local/share/openb` so the start page works when running outside the source
+tree. Any JavaScript files from `extensions` are installed to
+`/usr/local/share/openb/extensions`.
 
 Run it with:
 
