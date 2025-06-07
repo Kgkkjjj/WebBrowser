@@ -2,6 +2,7 @@
 #include <gdk/gdkkeysyms.h>
 #include <webkit2/webkit2.h>
 #include <glib/gstdio.h>
+#include <signal.h>
 #include "manager.h"
 
 static WebKitWebView *web_view;
@@ -31,6 +32,81 @@ static gchar *bookmarks_file = NULL;
 static gchar *session_file = NULL;
 static GtkNotebook *notebook = NULL;
 static gboolean private_mode = FALSE;
+
+static GPid server_pid = 0;
+static gchar *server_path = NULL;
+static gchar *venv_python = NULL;
+
+static gchar *find_root_file(const gchar *name) {
+    gchar *cwd = g_get_current_dir();
+    if (!cwd)
+        return NULL;
+    gchar *path = g_build_filename(cwd, name, NULL);
+    g_free(cwd);
+    if (!g_file_test(path, G_FILE_TEST_EXISTS)) {
+        g_free(path);
+        path = g_build_filename("/usr/local/share/openb", name, NULL);
+        if (!g_file_test(path, G_FILE_TEST_EXISTS)) {
+            g_free(path);
+            return NULL;
+        }
+    }
+    return path;
+}
+
+static void ensure_python_env(void) {
+    gchar *data_dir = g_build_filename(g_get_user_data_dir(), "openb", NULL);
+    gchar *venv_dir = g_build_filename(data_dir, "venv", NULL);
+    gchar *python = g_build_filename(venv_dir, "bin", "python", NULL);
+    if (!g_file_test(python, G_FILE_TEST_EXISTS)) {
+        gchar *cmd = g_strdup_printf("python3 -m venv '%s'", venv_dir);
+        manager_run_command(cmd, NULL);
+        g_free(cmd);
+        gchar *pip = g_build_filename(venv_dir, "bin", "pip", NULL);
+        cmd = g_strdup_printf("'%s' install -q requests", pip);
+        manager_run_command(cmd, NULL);
+        g_free(cmd);
+        g_free(pip);
+    }
+    venv_python = python;
+    g_free(venv_dir);
+    g_free(data_dir);
+}
+
+static gboolean start_backend_server(void) {
+    if (server_pid)
+        return TRUE;
+    ensure_python_env();
+    server_path = find_root_file("server.py");
+    if (!server_path || !venv_python)
+        return FALSE;
+    gchar *cmd = g_strdup_printf("'%s' '%s'", venv_python, server_path);
+    gchar *dir = g_path_get_dirname(server_path);
+    GError *err = NULL;
+    gboolean ok = g_spawn_async(dir, (gchar *[]){"/bin/sh","-c",cmd,NULL}, NULL,
+                               G_SPAWN_DO_NOT_REAP_CHILD, NULL, NULL, &server_pid, &err);
+    g_free(dir);
+    g_free(cmd);
+    if (!ok) {
+        manager_show_error_from_gerror(GTK_WINDOW(main_window), err);
+        g_error_free(err);
+        g_free(server_path);
+        server_path = NULL;
+        server_pid = 0;
+        return FALSE;
+    }
+    return TRUE;
+}
+
+static void stop_backend_server(void) {
+    if (server_pid) {
+        kill(server_pid, SIGTERM);
+        g_spawn_close_pid(server_pid);
+        server_pid = 0;
+    }
+    g_clear_pointer(&server_path, g_free);
+    g_clear_pointer(&venv_python, g_free);
+}
 
 static void new_tab(GtkWidget *w, gpointer d);
 static void close_tab(GtkWidget *w, gpointer d);
@@ -957,6 +1033,8 @@ int main(int argc, char *argv[]) {
 
     program_path = argv[0];
 
+    start_backend_server();
+
     for (int i = 1; i < argc; i++) {
         if (g_strcmp0(argv[i], "--private") == 0)
             private_mode = TRUE;
@@ -1365,6 +1443,7 @@ int main(int argc, char *argv[]) {
     if (manager)
         g_object_unref(manager);
     g_object_unref(context);
+    stop_backend_server();
     manager_shutdown();
     return 0;
 }

@@ -20,7 +20,8 @@ done
 if command -v apt-get >/dev/null 2>&1; then
     echo "Updating package lists and installing dependencies..."
     sudo apt-get update -y
-    sudo apt-get install -y build-essential libgtk-3-dev libwebkit2gtk-4.1-dev
+    sudo apt-get install -y build-essential libgtk-3-dev libwebkit2gtk-4.1-dev \
+        python3 python3-venv
 fi
 
 if command -v pkg-config >/dev/null 2>&1; then
