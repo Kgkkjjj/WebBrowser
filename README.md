@@ -34,11 +34,11 @@ Run the compiled binary:
 ```
 
 The browser opens on an interactive home page located in `data/home.html`.
-It contains roughly seven hundred lines of markup, about three hundred lines of
-CSS and six hundred lines of JavaScript. The CSS styles a header, navigation bar
-and a long list of colourful feature tiles. Each tile is wired with a click
-handler so selecting one displays a short message. Links to
-`downloads.html`, `news.html` and `devtools.html` remain at the top. When
+This file now weighs in at around **one megabyte** of HTML5, CSS3 and
+JavaScript. Thousands of colour classes style a modern layout with hundreds of
+feature tiles. Each tile has a click handler that logs a short message. Links to
+`downloads.html`, `news.html`, `devtools.html` and `extensions.html` remain at
+the top. When
 installed via the net installer the entire `data` folder is copied to
 `/usr/local/share/openb` so the pages work even when you run the browser outside
 the source tree. Use the
