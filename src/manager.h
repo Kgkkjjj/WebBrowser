@@ -23,5 +23,9 @@ void manager_show_warning(GtkWindow *parent, const gchar *fmt, ...);
 void manager_show_critical(GtkWindow *parent, const gchar *fmt, ...);
 void manager_open_log(GtkWindow *parent);
 void manager_show_error_from_gerror(GtkWindow *parent, GError *error);
+gboolean manager_run_command(const gchar *cmd, GError **error);
+gsize manager_get_memory_usage(void);
+void manager_set_memory_limit(gsize bytes);
+gboolean manager_check_memory_usage(void);
 
 #endif /* OPENB_MANAGER_H */

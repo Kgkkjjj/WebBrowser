@@ -66,6 +66,9 @@ address bar are kept in memory for the current session and accessible via the
 Any loading or network errors are written to `~/.cache/openb/error.log` and
 displayed in a dialog. A dedicated **Tasks** window shows active downloads and
 operations. Open it with the **Tasks** toolbar button or `Ctrl+Shift+M`.
+The manager also keeps an eye on memory usage. If the browser consumes more
+than about 200 MB, a warning is written to the log and shown in a dialog so you
+can decide whether to continue.
 
 ## Updating
 

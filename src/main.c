@@ -237,6 +237,10 @@ static gboolean load_changed(WebKitWebView *view, WebKitLoadEvent event, gpointe
                 "document.documentElement.style.filter='invert(1) hue-rotate(180deg)';",
                 -1, NULL, NULL, NULL, NULL, NULL);
         }
+        if (!manager_check_memory_usage()) {
+            manager_show_warning(GTK_WINDOW(main_window),
+                "Memory usage is high. Consider closing some tabs.");
+        }
     }
     return FALSE;
 }
@@ -544,14 +548,11 @@ static gboolean perform_update(void) {
     else
         cmd = g_strdup_printf("wget -O '%s' '%s'", archive, url);
 
-    gint status = 0;
     GError *error = NULL;
-    const gchar *argv_dl[] = {"/bin/sh", "-c", cmd, NULL};
-    g_spawn_sync(NULL, (gchar **)argv_dl, NULL, G_SPAWN_SEARCH_PATH,
-                 NULL, NULL, NULL, NULL, &status, &error);
+    gboolean ok = manager_run_command(cmd, &error);
     g_free(cmd);
 
-    if (status != 0 || error) {
+    if (!ok) {
         gtk_widget_destroy(info);
         GtkWidget *fail = gtk_message_dialog_new(GTK_WINDOW(main_window),
             GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT,
@@ -568,13 +569,11 @@ static gboolean perform_update(void) {
         return FALSE;
     }
 
-    const gchar *argv_extract[] = {"/bin/sh", "-c",
-        g_strdup_printf("tar -xzf '%s' -C '%s'", archive, tmpdir), NULL};
-    g_spawn_sync(NULL, (gchar **)argv_extract, NULL, G_SPAWN_SEARCH_PATH,
-                 NULL, NULL, NULL, NULL, &status, &error);
-    g_free((gpointer)argv_extract[2]);
+    gchar *extract_cmd = g_strdup_printf("tar -xzf '%s' -C '%s'", archive, tmpdir);
+    ok = manager_run_command(extract_cmd, &error);
+    g_free(extract_cmd);
 
-    if (status != 0 || error) {
+    if (!ok) {
         gtk_widget_destroy(info);
         GtkWidget *fail = gtk_message_dialog_new(GTK_WINDOW(main_window),
             GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT,
@@ -593,9 +592,7 @@ static gboolean perform_update(void) {
 
     gchar *new_binary = g_build_filename(tmpdir, "openb", NULL);
     gchar *install_cmd = g_strdup_printf("install -m 755 '%s' '%s'", new_binary, program_path);
-    const gchar *argv_install[] = {"/bin/sh", "-c", install_cmd, NULL};
-    g_spawn_sync(NULL, (gchar **)argv_install, NULL, G_SPAWN_SEARCH_PATH,
-                 NULL, NULL, NULL, NULL, &status, &error);
+    ok = manager_run_command(install_cmd, &error);
     g_free(install_cmd);
 
     gtk_widget_destroy(info);
@@ -605,7 +602,7 @@ static gboolean perform_update(void) {
     g_remove(tmpdir);
     g_free(tmpdir);
 
-    if (status != 0 || error) {
+    if (!ok) {
         GtkWidget *fail = gtk_message_dialog_new(GTK_WINDOW(main_window),
             GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT,
             GTK_MESSAGE_ERROR,
@@ -936,6 +933,7 @@ int main(int argc, char *argv[]) {
     }
 
     manager_init();
+    manager_set_memory_limit(200 * 1024 * 1024); /* 200 MB */
 
     program_path = argv[0];
 

@@ -3,6 +3,7 @@
 #include <glib/gstdio.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include <unistd.h>
 
 struct BrowserTask {
     GtkWidget *row;
@@ -20,6 +21,7 @@ static gsize log_max_size = 1024 * 1024; /* 1 MB */
 
 static ManagerErrorFunc error_cb = NULL;
 static gpointer error_cb_data = NULL;
+static gsize memory_limit = 0;
 
 void manager_init(void) {
     gchar *cache_dir = g_build_filename(g_get_user_cache_dir(), "openb", NULL);
@@ -229,5 +231,59 @@ void manager_show_error_from_gerror(GtkWindow *parent, GError *error) {
     if (!error)
         return;
     manager_show_error(parent, "%s", error->message);
+}
+
+gboolean manager_run_command(const gchar *cmd, GError **error) {
+    manager_log_info("Running command: %s", cmd);
+    gint status = 0;
+    gboolean res = g_spawn_command_line_sync(cmd, NULL, NULL, &status, error);
+    if (!res)
+        return FALSE;
+    if (status != 0) {
+        manager_log_warning("Command failed (%d): %s", status, cmd);
+        if (error && *error == NULL)
+            g_set_error(error, g_quark_from_static_string("manager"), status,
+                        "command exited with status %d", status);
+        return FALSE;
+    }
+    return TRUE;
+}
+
+static gsize parse_proc_status(void) {
+    gchar *path = g_strdup_printf("/proc/%d/status", getpid());
+    gchar *content = NULL;
+    if (!g_file_get_contents(path, &content, NULL, NULL)) {
+        g_free(path);
+        return 0;
+    }
+    gchar *line = g_strstr_len(content, -1, "VmRSS:");
+    gsize value = 0;
+    if (line) {
+        line += 6;
+        while (g_ascii_isspace(*line)) line++;
+        value = g_ascii_strtoll(line, NULL, 10) * 1024;
+    }
+    g_free(content);
+    g_free(path);
+    return value;
+}
+
+gsize manager_get_memory_usage(void) {
+    return parse_proc_status();
+}
+
+void manager_set_memory_limit(gsize bytes) {
+    memory_limit = bytes;
+}
+
+gboolean manager_check_memory_usage(void) {
+    if (!memory_limit)
+        return TRUE;
+    gsize used = manager_get_memory_usage();
+    if (used > memory_limit) {
+        manager_log_warning("Memory usage high: %.2f MB", used / (1024.0 * 1024.0));
+        return FALSE;
+    }
+    return TRUE;
 }
 
