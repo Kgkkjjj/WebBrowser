@@ -37,6 +37,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         self.end_headers()
 
     def do_GET(self):
+        global tab_count
         parsed = urlparse(self.path)
         try:
             if parsed.path == '/search':
@@ -56,7 +57,6 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(json.dumps({'tabs': tab_count, 'status': 'ok'}).encode())
             elif parsed.path == '/update_tabs':
-                global tab_count
                 try:
                     tab_count = int(parse_qs(parsed.query).get('count',[tab_count])[0])
                 except ValueError:
