@@ -929,8 +929,10 @@ static void new_tab(GtkWidget *w, gpointer d) {
 }
 
 static void close_tab(GtkWidget *w, gpointer d) {
+    if (!notebook)
+        return;
     gint page = gtk_notebook_get_current_page(notebook);
-    if (notebook && gtk_notebook_get_n_pages(notebook) > 1) {
+    if (gtk_notebook_get_n_pages(notebook) > 1) {
         GtkWidget *child = gtk_notebook_get_nth_page(notebook, page);
         gtk_notebook_remove_page(notebook, page);
         if (page > 0)

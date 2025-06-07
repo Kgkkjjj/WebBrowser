@@ -43,7 +43,8 @@
     }
 
     function search(q){
-        fetch('https://api.duckduckgo.com/?q='+encodeURIComponent(q)+'&format=json')
+        const url='https://api.duckduckgo.com/?q='+encodeURIComponent(q)+'&format=json&no_redirect=1&no_html=1';
+        fetch(url)
             .then(r=>r.json())
             .then(d=>{
                 if(Array.isArray(d.RelatedTopics))
