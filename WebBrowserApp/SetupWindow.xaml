@@ -1,0 +1,15 @@
+<Window
+    x:Class="WebBrowserApp.SetupWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    Title="Setup" Height="200" Width="400">
+    <StackPanel Spacing="10" Margin="20">
+        <TextBlock Text="Setup will install required packages." TextWrapping="Wrap"/>
+        <Button x:Name="InstallButton" Content="Install Packages" Click="OnInstallClicked"/>
+        <TextBlock Text="The window will close when setup is complete." TextWrapping="Wrap"/>
+        <TextBlock x:Name="StatusText"/>
+    </StackPanel>
+</Window>
