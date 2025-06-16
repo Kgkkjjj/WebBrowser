@@ -46,9 +46,16 @@ public sealed partial class MainWindow : Window
         var response = await _httpClient.PostAsync("https://api-inference.huggingface.co/models/gpt2", content);
         if (response.IsSuccessStatusCode)
         {
-            var json = await response.Content.ReadAsStringAsync();
-            return json;
+            using var stream = await response.Content.ReadAsStreamAsync();
+            var doc = await JsonDocument.ParseAsync(stream);
+            if (doc.RootElement.ValueKind == JsonValueKind.Array && doc.RootElement.GetArrayLength() > 0)
+            {
+                var item = doc.RootElement[0];
+                if (item.TryGetProperty("generated_text", out var text))
+                    return text.GetString() ?? string.Empty;
+            }
+            return doc.RootElement.ToString();
         }
-        return "";
+        return $"Error: {response.ReasonPhrase}";
     }
 }

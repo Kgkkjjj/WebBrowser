@@ -9,6 +9,7 @@
     <StackPanel Spacing="10" Margin="20">
         <TextBlock Text="Setup will install required packages." TextWrapping="Wrap"/>
         <Button x:Name="InstallButton" Content="Install Packages" Click="OnInstallClicked"/>
+        <TextBlock Text="The window will close when setup is complete." TextWrapping="Wrap"/>
         <TextBlock x:Name="StatusText"/>
     </StackPanel>
 </Window>

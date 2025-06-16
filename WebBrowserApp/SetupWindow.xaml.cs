@@ -22,6 +22,7 @@ public sealed partial class SetupWindow : Window
         await RunProcessAsync("dotnet", "build --configuration Release");
         StatusText.Text = "Setup complete";
         InstallButton.IsEnabled = true;
+        Close();
     }
 
     private static Task RunProcessAsync(string fileName, string arguments)
