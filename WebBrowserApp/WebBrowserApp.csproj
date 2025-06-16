@@ -9,7 +9,4 @@
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.4.231028000" />
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.1901.2355" />
   </ItemGroup>
-  <ItemGroup>
-    <Page Include="SetupWindow.xaml" />
-  </ItemGroup>
 </Project>

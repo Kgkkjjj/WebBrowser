@@ -6,7 +6,9 @@ HuggingFace Inference API. The project requires the Windows App SDK and
 .NET 7 to build and run.
 
 When launched, the app displays a simple setup window that can automatically
-restore NuGet packages and build the project.
+restore NuGet packages and build the project. The browser UI includes a prompt
+box so you can send text to the example AI model and see the response in the
+window.
 
 ## Building
 
@@ -18,8 +20,9 @@ restore NuGet packages and build the project.
 ## Running
 
 After building, you can run the app with `dotnet run --project WebBrowserApp.csproj`.
-Enter any URL to navigate. The `AskModelAsync` method shows how you could send
-text prompts to an AI model for processing via the HuggingFace API.
+Enter any URL to navigate. Below the browser area is a text box and button for
+sending prompts to the HuggingFace API. Responses are displayed directly in the
+window so you can experiment with the model without leaving the app.
 
 ## Setup Screen
 

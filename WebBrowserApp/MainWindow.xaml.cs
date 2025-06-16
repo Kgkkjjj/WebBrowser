@@ -27,6 +27,17 @@ public sealed partial class MainWindow : Window
         }
     }
 
+    private async void OnAskClicked(object sender, RoutedEventArgs e)
+    {
+        var prompt = PromptBox.Text;
+        if (!string.IsNullOrWhiteSpace(prompt))
+        {
+            AiResponseText.Text = "Thinking...";
+            var response = await AskModelAsync(prompt);
+            AiResponseText.Text = response;
+        }
+    }
+
     private async Task<string> AskModelAsync(string prompt)
     {
         var requestBody = new { inputs = prompt };
