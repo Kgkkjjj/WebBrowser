@@ -11,7 +11,12 @@ public partial class App : Application
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
-        var window = new MainWindow();
-        window.Activate();
+        var setup = new SetupWindow();
+        setup.Activate();
+        setup.Closed += (_, _) =>
+        {
+            var window = new MainWindow();
+            window.Activate();
+        };
     }
 }
