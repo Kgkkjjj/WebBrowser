@@ -11,3 +11,5 @@ This dataset contains small C programs along with line-by-line explanations of w
 - `quicksort.c` – implementation of quicksort sorting algorithm.
 
 For each `.c` file, there is a matching explanation file describing the function of each line.
+
+The `c_snippets` directory contains forty standalone snippet files showing individual C statements with inline comments.
