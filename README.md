@@ -1,34 +1,61 @@
-# GPT-2 Thinking Model
+# Multi-language Web Scraper
 
-This repository demonstrates how to fine-tune GPT-2 on a small reasoning-oriented dataset. It relies on the [Hugging Face Transformers](https://github.com/huggingface/transformers) library and the `gsm8k` dataset, which contains grade-school math word problems.
+This repository provides simple example programs that fetch data from ten free APIs using Python, Go, Node.js, and C. The APIs require no authentication keys and demonstrate basic web scraping across different languages.
+
+## APIs
+
+The programs access the following endpoints:
+
+1. `https://api.publicapis.org/entries`
+2. `https://dog.ceo/api/breeds/image/random`
+3. `https://catfact.ninja/fact`
+4. `https://api.agify.io?name=John`
+5. `https://api.genderize.io?name=John`
+6. `https://api.nationalize.io?name=John`
+7. `https://official-joke-api.appspot.com/jokes/random`
+8. `https://www.boredapi.com/api/activity`
+9. `https://api.coindesk.com/v1/bpi/currentprice.json`
+10. `https://api.ipify.org?format=json`
+
+## Python
+
+Run the Python scraper:
+
+```bash
+python python_scraper.py
+```
+
+## Node.js
+
+Run the Node.js scraper:
+
+```bash
+node node_scraper.js
+```
+
+## Go
+
+Build and run the Go scraper:
+
+```bash
+go build go_scraper.go
+./go_scraper
+```
+
+## C
+
+Compile and run the C scraper (requires libcurl):
+
+```bash
+gcc c_scraper.c -o c_scraper -lcurl
+./c_scraper
+```
 
 ## Requirements
 
-- Python 3.8+
-- `transformers` library
-- `datasets` library
-- `torch`
+- Python 3 with `requests`
+- Node.js
+- Go toolchain
+- GCC and libcurl
 
-Install dependencies with:
-
-```bash
-pip install transformers datasets torch
-```
-
-## Training
-
-The script `train_thinking_model.py` trains GPT-2 using a combination of a small subset of the `gsm8k` dataset and several chain-of-thought style examples defined directly in the code.
-
-Run training with:
-
-```bash
-python train_thinking_model.py
-```
-
-Training results and the model will be saved in `./thinking_model_output`.
-
-The model is initialized with a custom configuration that uses **30 transformer layers** to encourage deeper reasoning.
-
-## Notes
-
-By default only a tiny portion of the dataset is used so the example runs quickly. Adjust the parameters in the script if you want to experiment with longer training or larger datasets.
+No API keys are necessary to access the listed endpoints.
