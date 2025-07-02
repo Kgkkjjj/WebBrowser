@@ -1,6 +1,6 @@
-# Multi-language Web Scraper
+# Unified Web Scraper
 
-This repository provides simple example programs that fetch data from thirty free APIs using Python, Go, Node.js, and C. The APIs require no authentication keys and demonstrate basic web scraping across different languages.
+This repository now contains a single Python program that fetches data from thirty free APIs. It consolidates the previous C, Go, and Node.js examples into one script.
 
 ## APIs
 
@@ -37,45 +37,16 @@ The programs access the following endpoints:
 29. `https://en.wikipedia.org/api/rest_v1/page/summary/Stack_Overflow`
 30. `https://jsonplaceholder.typicode.com/todos/1`
 
-## Python
+## Usage
 
-Run the Python scraper:
-
-```bash
-python python_scraper.py
-```
-
-## Node.js
-
-Run the Node.js scraper:
+Run the scraper:
 
 ```bash
-node node_scraper.js
-```
-
-## Go
-
-Build and run the Go scraper:
-
-```bash
-go build go_scraper.go
-./go_scraper
-```
-
-## C
-
-Compile and run the C scraper (requires libcurl):
-
-```bash
-gcc c_scraper.c -o c_scraper -lcurl
-./c_scraper
+python unified_scraper.py
 ```
 
 ## Requirements
 
 - Python 3 with `requests`
-- Node.js
-- Go toolchain
-- GCC and libcurl
 
 No API keys are necessary to access the listed endpoints.
