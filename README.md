@@ -1,6 +1,6 @@
 # GPT-2 Thinking Model
 
-This repository provides a simple example of how to fine-tune GPT-2 on a reasoning-focused dataset. The example uses the [Hugging Face Transformers](https://github.com/huggingface/transformers) library and the `gsm8k` dataset, which contains grade-school level math word problems.
+This repository demonstrates how to fine-tune GPT-2 on a small reasoning-oriented dataset. It relies on the [Hugging Face Transformers](https://github.com/huggingface/transformers) library and the `gsm8k` dataset, which contains grade-school math word problems.
 
 ## Requirements
 
@@ -9,7 +9,7 @@ This repository provides a simple example of how to fine-tune GPT-2 on a reasoni
 - `datasets` library
 - `torch`
 
-You can install the dependencies with:
+Install dependencies with:
 
 ```bash
 pip install transformers datasets torch
@@ -17,30 +17,18 @@ pip install transformers datasets torch
 
 ## Training
 
-The script `train_gpt2_thinking_model.py` demonstrates how to fine-tune GPT-2 on the `gsm8k` dataset. To run the training with default parameters:
+The script `train_thinking_model.py` trains GPT-2 using a combination of a small subset of the `gsm8k` dataset and several chain-of-thought style examples defined directly in the code.
+
+Run training with:
 
 ```bash
-python train_gpt2_thinking_model.py
+python train_thinking_model.py
 ```
 
-The script downloads the dataset automatically. Training results and the model will be saved in the `./model_output` directory.
+Training results and the model will be saved in `./thinking_model_output`.
 
-The model is initialized with a custom GPT-2 configuration that uses **30 transformer layers** to encourage more complex reasoning.
-
-## Complex Thinking Example
-
-For a more advanced demonstration, the script `train_complex_thinking_model.py`
-uses a small chain-of-thought style dataset defined directly in the code. It
-also initializes GPT-2 with 30 layers and trains for a few epochs.
-
-Run it with:
-
-```bash
-python train_complex_thinking_model.py
-```
-
-Training outputs are written to `./complex_model_output`.
+The model is initialized with a custom configuration that uses **30 transformer layers** to encourage deeper reasoning.
 
 ## Notes
 
-This example uses a small subset of the dataset by default for faster training. Adjust the hyperparameters in the script to experiment with different configurations or larger datasets.
+By default only a tiny portion of the dataset is used so the example runs quickly. Adjust the parameters in the script if you want to experiment with longer training or larger datasets.

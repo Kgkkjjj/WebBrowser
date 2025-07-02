@@ -1,5 +1,5 @@
 import os
-from datasets import Dataset
+from datasets import load_dataset, Dataset, concatenate_datasets
 from transformers import (
     AutoTokenizer,
     AutoModelForCausalLM,
@@ -8,7 +8,7 @@ from transformers import (
     TrainingArguments,
 )
 
-# Simple chain-of-thought style dataset
+# Custom chain-of-thought examples
 COMPLEX_DATA = [
     {
         "question": "John has 3 apples. He buys 2 more and gives 1 to Mary. How many apples does John have now?",
@@ -32,8 +32,11 @@ COMPLEX_DATA = [
     },
 ]
 
+DATASET_NAME = "gsm8k"
+DATASET_CONFIG = "main"
+SPLIT = "train[:1%]"
 MODEL_NAME = "gpt2"
-OUTPUT_DIR = "./complex_model_output"
+OUTPUT_DIR = "./thinking_model_output"
 MAX_LENGTH = 512
 NUM_LAYERS = 30
 
@@ -52,8 +55,12 @@ def main():
     config.n_layer = NUM_LAYERS
     model = AutoModelForCausalLM.from_config(config)
 
-    dataset = Dataset.from_list(COMPLEX_DATA)
-    dataset = dataset.map(lambda x: preprocess(x, tokenizer), remove_columns=["question", "answer"])
+    gsm8k = load_dataset(DATASET_NAME, DATASET_CONFIG, split=SPLIT)
+    gsm8k = gsm8k.map(lambda x: {"question": x["question"].strip(), "answer": x["answer"].strip()})
+    custom = Dataset.from_list(COMPLEX_DATA)
+
+    full_dataset = concatenate_datasets([gsm8k, custom])
+    full_dataset = full_dataset.map(lambda x: preprocess(x, tokenizer), remove_columns=["question", "answer"])
 
     training_args = TrainingArguments(
         output_dir=OUTPUT_DIR,
@@ -64,7 +71,7 @@ def main():
         max_steps=200,
     )
 
-    trainer = Trainer(model=model, args=training_args, train_dataset=dataset)
+    trainer = Trainer(model=model, args=training_args, train_dataset=full_dataset)
     trainer.train()
 
     os.makedirs(OUTPUT_DIR, exist_ok=True)
