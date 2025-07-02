@@ -1,6 +1,6 @@
 # Multi-language Web Scraper
 
-This repository provides simple example programs that fetch data from ten free APIs using Python, Go, Node.js, and C. The APIs require no authentication keys and demonstrate basic web scraping across different languages.
+This repository provides simple example programs that fetch data from thirty free APIs using Python, Go, Node.js, and C. The APIs require no authentication keys and demonstrate basic web scraping across different languages.
 
 ## APIs
 
@@ -16,6 +16,26 @@ The programs access the following endpoints:
 8. `https://www.boredapi.com/api/activity`
 9. `https://api.coindesk.com/v1/bpi/currentprice.json`
 10. `https://api.ipify.org?format=json`
+11. `https://randomuser.me/api/`
+12. `https://api.adviceslip.com/advice`
+13. `https://api.kanye.rest/`
+14. `https://yesno.wtf/api`
+15. `https://api.chucknorris.io/jokes/random`
+16. `https://ron-swanson-quotes.herokuapp.com/v2/quotes`
+17. `http://api.open-notify.org/iss-now.json`
+18. `https://randomfox.ca/floof/`
+19. `https://api.openbrewerydb.org/breweries`
+20. `https://ghibliapi.herokuapp.com/films`
+21. `https://poetrydb.org/random`
+22. `https://www.thecocktaildb.com/api/json/v1/1/random.php`
+23. `https://www.themealdb.com/api/json/v1/1/random.php`
+24. `https://pokeapi.co/api/v2/pokemon/pikachu`
+25. `https://xkcd.com/info.0.json`
+26. `https://swapi.dev/api/people/1`
+27. `https://api.coingecko.com/api/v3/exchange_rates`
+28. `https://www.reddit.com/r/popular.json`
+29. `https://en.wikipedia.org/api/rest_v1/page/summary/Stack_Overflow`
+30. `https://jsonplaceholder.typicode.com/todos/1`
 
 ## Python
 
