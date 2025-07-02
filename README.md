@@ -27,6 +27,20 @@ The script downloads the dataset automatically. Training results and the model w
 
 The model is initialized with a custom GPT-2 configuration that uses **30 transformer layers** to encourage more complex reasoning.
 
+## Complex Thinking Example
+
+For a more advanced demonstration, the script `train_complex_thinking_model.py`
+uses a small chain-of-thought style dataset defined directly in the code. It
+also initializes GPT-2 with 30 layers and trains for a few epochs.
+
+Run it with:
+
+```bash
+python train_complex_thinking_model.py
+```
+
+Training outputs are written to `./complex_model_output`.
+
 ## Notes
 
 This example uses a small subset of the dataset by default for faster training. Adjust the hyperparameters in the script to experiment with different configurations or larger datasets.
