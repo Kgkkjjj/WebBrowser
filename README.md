@@ -46,10 +46,12 @@ search engine automatically.
 
 ### Security
 
-The browser performs a few basic security checks using `security.py`. URLs
-added to the blocklist are blocked from loading. When a page is loaded the
-browser ensures it uses HTTPS and attempts to verify the site's SSL
-certificate. If either check fails you'll be asked whether to proceed.
+The browser performs security checks using `security.py`. URLs added to the
+blocklist are blocked from loading. In addition to verifying HTTPS and the
+server certificate, the browser now includes over twenty additional checks for
+common headers like HSTS, CSP and CORS. Each request is analysed by a
+`SecurityManager` which can also perform rate-limiting and IP blocking. If a
+check fails you'll be asked whether to proceed.
 
 ### JavaScript support
 
