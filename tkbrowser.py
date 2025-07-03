@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter import ttk
-from tkinter import messagebox
+from tkinter import messagebox, filedialog
 from tkinterweb import HtmlFrame
 import urllib.request
 
@@ -12,6 +12,9 @@ class TabbedBrowser(tk.Tk):
         super().__init__()
         self.title("Tk Browser")
         self.geometry("1024x768")
+        self.home_url = "https://www.python.org"
+        self.bookmarks = []
+        self.history = []
         self._create_widgets()
         self.new_tab()
 
@@ -41,6 +44,11 @@ class TabbedBrowser(tk.Tk):
         )
         reload_btn.pack(side=tk.LEFT)
 
+        home_btn = ttk.Button(
+            toolbar, text="Home", command=self.go_home
+        )
+        home_btn.pack(side=tk.LEFT)
+
         self.notebook = ttk.Notebook(self)
         self.notebook.pack(fill=tk.BOTH, expand=True)
 
@@ -57,11 +65,35 @@ class TabbedBrowser(tk.Tk):
             label="New Tab", accelerator="Ctrl+T", command=self.new_tab
         )
         file_menu.add_command(
+            label="Open File", accelerator="Ctrl+O", command=self.open_file
+        )
+        file_menu.add_command(
             label="Close Tab", accelerator="Ctrl+W", command=self.close_tab
         )
         file_menu.add_separator()
         file_menu.add_command(label="Quit", command=self.quit)
         menu_bar.add_cascade(label="File", menu=file_menu)
+
+        bookmark_menu = tk.Menu(menu_bar, tearoff=False)
+        bookmark_menu.add_command(
+            label="Add Bookmark",
+            accelerator="Ctrl+D",
+            command=self.add_bookmark,
+        )
+        bookmark_menu.add_command(
+            label="Show Bookmarks",
+            accelerator="Ctrl+B",
+            command=self.show_bookmarks,
+        )
+        menu_bar.add_cascade(label="Bookmarks", menu=bookmark_menu)
+
+        history_menu = tk.Menu(menu_bar, tearoff=False)
+        history_menu.add_command(
+            label="Show History",
+            accelerator="Ctrl+H",
+            command=self.show_history,
+        )
+        menu_bar.add_cascade(label="History", menu=history_menu)
 
         tools_menu = tk.Menu(menu_bar, tearoff=False)
         tools_menu.add_command(
@@ -71,10 +103,16 @@ class TabbedBrowser(tk.Tk):
 
         self.config(menu=menu_bar)
         self.bind_all("<Control-t>", lambda e: self.new_tab())
+        self.bind_all("<Control-o>", lambda e: self.open_file())
         self.bind_all("<Control-w>", lambda e: self.close_tab())
         self.bind_all("<Control-u>", lambda e: self.view_source())
+        self.bind_all("<Control-d>", lambda e: self.add_bookmark())
+        self.bind_all("<Control-b>", lambda e: self.show_bookmarks())
+        self.bind_all("<Control-h>", lambda e: self.show_history())
 
-    def new_tab(self, url="https://www.python.org"):
+    def new_tab(self, url=None):
+        if url is None:
+            url = self.home_url
         frame = ttk.Frame(self.notebook)
         html = HtmlFrame(frame, horizontal_scrollbar="auto")
         html.pack(fill=tk.BOTH, expand=True)
@@ -86,6 +124,7 @@ class TabbedBrowser(tk.Tk):
         try:
             html.load_website(url)
             self.notebook.tab(frame, text=url)
+            self.history.append(url)
         except Exception:
             pass
         finally:
@@ -110,6 +149,7 @@ class TabbedBrowser(tk.Tk):
         try:
             html.load_website(url)
             self.notebook.tab(self.notebook.select(), text=url)
+            self.history.append(url)
         except Exception as exc:
             messagebox.showerror("Error", str(exc))
         finally:
@@ -160,6 +200,71 @@ class TabbedBrowser(tk.Tk):
         text.insert("1.0", source)
         text.configure(state="disabled")
         text.pack(fill=tk.BOTH, expand=True)
+
+    def open_file(self, event=None):
+        path = filedialog.askopenfilename(
+            filetypes=[("HTML files", "*.html *.htm"), ("All files", "*.*")]
+        )
+        if path:
+            html = self.current_html()
+            if html:
+                try:
+                    html.load_file(path)
+                    self.notebook.tab(self.notebook.select(), text=path)
+                    self.url_var.set(path)
+                except Exception as exc:
+                    messagebox.showerror("Error", str(exc))
+
+    def add_bookmark(self, event=None):
+        url = self.url_var.get()
+        if url and url not in self.bookmarks:
+            self.bookmarks.append(url)
+            self.status_var.set(f"Bookmarked {url}")
+
+    def show_bookmarks(self, event=None):
+        if not self.bookmarks:
+            messagebox.showinfo("Bookmarks", "No bookmarks added.")
+            return
+        win = tk.Toplevel(self)
+        win.title("Bookmarks")
+        lb = tk.Listbox(win)
+        for bm in self.bookmarks:
+            lb.insert(tk.END, bm)
+        lb.pack(fill=tk.BOTH, expand=True)
+
+        def open_sel(event=None):
+            sel = lb.curselection()
+            if sel:
+                self.url_var.set(lb.get(sel[0]))
+                self.load_url()
+                win.destroy()
+
+        lb.bind("<Double-1>", open_sel)
+        open_btn = ttk.Button(win, text="Open", command=open_sel)
+        open_btn.pack(pady=5)
+
+    def show_history(self, event=None):
+        if not self.history:
+            messagebox.showinfo("History", "No pages visited yet.")
+            return
+        win = tk.Toplevel(self)
+        win.title("History")
+        lb = tk.Listbox(win)
+        for url in self.history:
+            lb.insert(tk.END, url)
+        lb.pack(fill=tk.BOTH, expand=True)
+        lb.bind(
+            "<Double-1>",
+            lambda e: (
+                self.url_var.set(lb.get(lb.curselection()[0])),
+                self.load_url(),
+                win.destroy(),
+            ),
+        )
+
+    def go_home(self):
+        self.url_var.set(self.home_url)
+        self.load_url()
 
 
 def main():

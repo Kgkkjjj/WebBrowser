@@ -3,8 +3,9 @@
 Tk Browser is a cross-platform web browser built with Python's
 `tkinter` GUI toolkit and [`tkinterweb`](https://github.com/Andereoo/TkinterWeb).
 It works on Windows and Linux as long as Python and the required packages are
-installed. The interface supports multiple tabs and basic developer tools like
-viewing page source.
+installed. The interface supports multiple tabs and developer tools like
+viewing page source. Recent updates add bookmarks, a simple history viewer,
+and the ability to open local HTML files.
 
 ## Requirements
 
@@ -26,12 +27,13 @@ Run the browser from the command line:
 python tkbrowser.py
 ```
 
-A window will open with a basic address bar and navigation buttons. Enter a URL
-in the address bar and press `Go` or the Enter key to load the page. Use the
-Back and Forward buttons to navigate through history or `Reload` to refresh the
-current page. Open new tabs from the **File** menu (Ctrl+T) and close them with
-**Ctrl+W**. The **Tools** menu provides an option to view the page source
-(Ctrl+U).
+A window will open with a basic address bar, navigation buttons and a Home
+button. Enter a URL in the address bar and press `Go` or the Enter key to load
+the page. Use the Back and Forward buttons or `Reload` to refresh the current
+page. Open new tabs from the **File** menu (Ctrl+T) or open local files with
+**Ctrl+O**. Add bookmarks with **Ctrl+D** and browse them with **Ctrl+B**.
+The **History** menu (Ctrl+H) lists recently visited pages. The **Tools** menu
+still provides an option to view the page source (Ctrl+U).
 
 ## License
 
