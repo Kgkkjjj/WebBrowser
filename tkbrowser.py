@@ -1,9 +1,11 @@
 import json
 import os
 import threading
+import subprocess
+import sys
 import tkinter as tk
 from tkinter import ttk
-from tkinter import messagebox, filedialog, simpledialog
+from tkinter import messagebox, filedialog
 from tkinterweb import HtmlFrame
 import tkinterweb.utilities as tku
 import urllib.request
@@ -452,20 +454,21 @@ class TabbedBrowser(tk.Tk):
 
     def _ensure_js_window(self, url):
         try:
-            import webview
+            import importlib
+            importlib.import_module("webview")
         except Exception:
             messagebox.showerror(
                 "Error", "pywebview is required for JS support"
             )
             return None
-        if self.js_window:
-            try:
-                self.js_window.load_url(url)
-                return self.js_window
-            except Exception:
-                self.js_window = None
-        self.js_window = webview.create_window("JS Mode", url)
-        threading.Thread(target=webview.start, daemon=True).start()
+        if self.js_window and self.js_window.poll() is None:
+            return self.js_window
+        script = (
+            "import webview, sys;"
+            "webview.create_window('JS Mode', sys.argv[1]);"
+            "webview.start()"
+        )
+        self.js_window = subprocess.Popen([sys.executable, "-c", script, url])
         return self.js_window
 
     def open_js_window(self, event=None):
@@ -473,16 +476,10 @@ class TabbedBrowser(tk.Tk):
         self._ensure_js_window(url)
 
     def run_js(self, event=None):
-        if not self.js_window:
-            messagebox.showinfo("JS", "Open a JS window first")
-            return
-        code = simpledialog.askstring("Run JavaScript", "Enter script:")
-        if code:
-            try:
-                result = self.js_window.evaluate_js(code)
-                messagebox.showinfo("Result", str(result))
-            except Exception as exc:
-                messagebox.showerror("Error", str(exc))
+        messagebox.showinfo(
+            "JavaScript",
+            "Running scripts is not supported when using external JS windows.",
+        )
 
     def toggle_js_mode(self, event=None):
         self.js_mode = not self.js_mode

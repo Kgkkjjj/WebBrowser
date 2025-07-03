@@ -55,10 +55,10 @@ certificate. If either check fails you'll be asked whether to proceed.
 
 Install the optional [`pywebview`](https://pywebview.flowrl.com/) package to
 enable JavaScript-capable windows. Use **JS Tools → Open JS Window** (Ctrl+J)
-to open the current page in a new WebView with full scripting support. You can
-then run custom scripts via **JS Tools → Run JavaScript...**.
-Enable "Use JS Mode" from the same menu (Ctrl+Shift+J) to automatically open
-all pages in a WebView so complex sites work with JavaScript by default.
+to open the current page in a separate WebView process. JavaScript windows are
+opened externally, so running custom scripts inside them isn't supported. Enable
+"Use JS Mode" from the same menu (Ctrl+Shift+J) to automatically open all pages
+in an external WebView so complex sites work with JavaScript by default.
 
 ### Optional Python helper
 
