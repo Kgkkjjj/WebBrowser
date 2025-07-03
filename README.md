@@ -7,7 +7,9 @@ installed. The interface supports multiple tabs and developer tools like
 viewing page source. Recent updates add bookmarks, a simple history viewer,
 the ability to open local HTML files, and a preferences dialog for setting the
 home page and default search engine. The address bar also doubles as a search
-box when you enter text that isn't a full URL.
+box when you enter text that isn't a full URL. New tools include zoom controls,
+dark mode, saving pages, printing and exporting bookmarks. Sessions are
+restored on startup and the User-Agent and proxy can be configured.
 
 ## Requirements
 
@@ -39,6 +41,12 @@ still provides an option to view the page source (Ctrl+U). Open the
 **Preferences** dialog with **Ctrl+,** to choose a start page and search engine.
 If the address you type isn't a full URL, it will be sent to the selected
 search engine automatically.
+
+### Optional Go helper
+
+Running `go run nethelper.go` starts a small server on port 8090 that can fetch
+remote pages via `/fetch?url=...`. You can load these URLs in the browser to see
+the integration with a Go networking component.
 
 ## License
 
