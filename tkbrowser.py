@@ -33,6 +33,7 @@ class TabbedBrowser(tk.Tk):
         self.zoom = 100
         self.dark_mode = False
         self.js_window = None
+        self.js_mode = False
         self._load_settings()
         self._load_session()
         self._create_widgets()
@@ -50,6 +51,7 @@ class TabbedBrowser(tk.Tk):
                 )
                 self.user_agent = data.get("user_agent", self.user_agent)
                 self.proxy = data.get("proxy", self.proxy)
+                self.js_mode = data.get("js_mode", self.js_mode)
                 if self.proxy:
                     os.environ["http_proxy"] = self.proxy
                     os.environ["https_proxy"] = self.proxy
@@ -62,6 +64,7 @@ class TabbedBrowser(tk.Tk):
             "search_engine": self.search_engine,
             "user_agent": self.user_agent,
             "proxy": self.proxy,
+            "js_mode": self.js_mode,
         }
         try:
             with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
@@ -256,12 +259,18 @@ class TabbedBrowser(tk.Tk):
         )
         menu_bar.add_cascade(label="Tools", menu=tools_menu)
 
+        self.js_var = tk.BooleanVar(value=self.js_mode)
         js_menu = tk.Menu(menu_bar, tearoff=False)
         js_menu.add_command(
             label="Open JS Window", command=self.open_js_window
         )
         js_menu.add_command(
             label="Run JavaScript...", command=self.run_js
+        )
+        js_menu.add_separator()
+        js_menu.add_checkbutton(
+            label="Use JS Mode", command=self.toggle_js_mode,
+            variable=self.js_var
         )
         menu_bar.add_cascade(label="JS Tools", menu=js_menu)
 
@@ -287,6 +296,7 @@ class TabbedBrowser(tk.Tk):
         self.bind_all("<Control-minus>", lambda e: self.zoom_out())
         self.bind_all("<Control-comma>", lambda e: self.open_preferences())
         self.bind_all("<Control-j>", lambda e: self.open_js_window())
+        self.bind_all("<Control-Shift-J>", lambda e: self.toggle_js_mode())
 
     def new_tab(self, url=None):
         if url is None:
@@ -326,6 +336,8 @@ class TabbedBrowser(tk.Tk):
         if not html:
             return
         tku.HEADERS["User-Agent"] = self.user_agent
+        if self.js_mode:
+            self._ensure_js_window(url)
         self.status_var.set("Loading...")
         try:
             html.load_website(url)
@@ -392,17 +404,27 @@ class TabbedBrowser(tk.Tk):
                     "a { color: blue; }"
                 )
 
-    def open_js_window(self, event=None):
+    def _ensure_js_window(self, url):
         try:
             import webview
         except Exception:
             messagebox.showerror(
                 "Error", "pywebview is required for JS support"
             )
-            return
-        url = self.url_var.get() or self.home_url
+            return None
+        if self.js_window:
+            try:
+                self.js_window.load_url(url)
+                return self.js_window
+            except Exception:
+                self.js_window = None
         self.js_window = webview.create_window("JS Mode", url)
         threading.Thread(target=webview.start, daemon=True).start()
+        return self.js_window
+
+    def open_js_window(self, event=None):
+        url = self.url_var.get() or self.home_url
+        self._ensure_js_window(url)
 
     def run_js(self, event=None):
         if not self.js_window:
@@ -415,6 +437,12 @@ class TabbedBrowser(tk.Tk):
                 messagebox.showinfo("Result", str(result))
             except Exception as exc:
                 messagebox.showerror("Error", str(exc))
+
+    def toggle_js_mode(self, event=None):
+        self.js_mode = not self.js_mode
+        self.js_var.set(self.js_mode)
+        status = "enabled" if self.js_mode else "disabled"
+        messagebox.showinfo("JavaScript Mode", f"JS mode {status}.")
 
     def close_tab(self, event=None):
         current = self.notebook.select()
