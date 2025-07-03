@@ -9,6 +9,7 @@ import tkinterweb.utilities as tku
 import urllib.request
 import urllib.parse
 import nethelper
+import security
 
 SETTINGS_FILE = "settings.json"
 SESSION_FILE = "session.json"
@@ -40,6 +41,7 @@ class TabbedBrowser(tk.Tk):
         self._load_settings()
         self._load_session()
         self._load_blocklist()
+        self.security = security.SecurityManager(self.blocklist)
         self._create_widgets()
         self.new_tab()
         self.protocol("WM_DELETE_WINDOW", self.on_close)
@@ -363,9 +365,19 @@ class TabbedBrowser(tk.Tk):
             engine = self.search_engines.get(self.search_engine, self.home_url)
             url = engine.format(query)
             self.url_var.set(url)
-        if url in self.blocklist:
+        if self.security.is_blocked(url):
             messagebox.showwarning("Blocked", "This URL is blocked.")
             return
+        if not self.security.is_https(url):
+            if not messagebox.askyesno(
+                "Insecure", "URL is not HTTPS. Continue anyway?"
+            ):
+                return
+        elif not self.security.verify_certificate(url):
+            if not messagebox.askyesno(
+                "Certificate", "Failed to verify SSL certificate. Continue?"
+            ):
+                return
         html = self.current_html()
         if not html:
             return
@@ -621,6 +633,7 @@ class TabbedBrowser(tk.Tk):
         url = self.url_var.get().strip()
         if url and url not in self.blocklist:
             self.blocklist.append(url)
+            self.security.blocklist.add(url)
             self._save_blocklist()
             self.status_var.set(f"Blocked {url}")
 
@@ -640,6 +653,7 @@ class TabbedBrowser(tk.Tk):
             if sel:
                 url = lb.get(sel[0])
                 self.blocklist.remove(url)
+                self.security.blocklist.discard(url)
                 lb.delete(sel[0])
                 self._save_blocklist()
 

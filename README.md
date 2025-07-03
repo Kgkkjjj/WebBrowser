@@ -44,6 +44,13 @@ still provides an option to view the page source (Ctrl+U). Open the
 If the address you type isn't a full URL, it will be sent to the selected
 search engine automatically.
 
+### Security
+
+The browser performs a few basic security checks using `security.py`. URLs
+added to the blocklist are blocked from loading. When a page is loaded the
+browser ensures it uses HTTPS and attempts to verify the site's SSL
+certificate. If either check fails you'll be asked whether to proceed.
+
 ### JavaScript support
 
 Install the optional [`pywebview`](https://pywebview.flowrl.com/) package to
