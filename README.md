@@ -17,10 +17,10 @@ restored on startup and the User-Agent and proxy can be configured.
 - `tkinter` (usually bundled with Python on Windows and most Linux distros)
 - `tkinterweb` package for rendering HTML
 
-Install the dependency via pip:
+Install the dependencies via pip:
 
 ```bash
-pip install tkinterweb
+pip install tkinterweb pywebview
 ```
 
 ## Usage
@@ -41,6 +41,13 @@ still provides an option to view the page source (Ctrl+U). Open the
 **Preferences** dialog with **Ctrl+,** to choose a start page and search engine.
 If the address you type isn't a full URL, it will be sent to the selected
 search engine automatically.
+
+### JavaScript support
+
+Install the optional [`pywebview`](https://pywebview.flowrl.com/) package to
+enable JavaScript-capable windows. Use **JS Tools → Open JS Window** (Ctrl+J)
+to open the current page in a new WebView with full scripting support. You can
+then run custom scripts via **JS Tools → Run JavaScript...**.
 
 ### Optional Go helper
 

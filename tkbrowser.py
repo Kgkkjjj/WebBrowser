@@ -1,8 +1,9 @@
 import json
 import os
+import threading
 import tkinter as tk
 from tkinter import ttk
-from tkinter import messagebox, filedialog
+from tkinter import messagebox, filedialog, simpledialog
 from tkinterweb import HtmlFrame
 import tkinterweb.utilities as tku
 import urllib.request
@@ -31,6 +32,7 @@ class TabbedBrowser(tk.Tk):
         self.proxy = ""
         self.zoom = 100
         self.dark_mode = False
+        self.js_window = None
         self._load_settings()
         self._load_session()
         self._create_widgets()
@@ -249,8 +251,19 @@ class TabbedBrowser(tk.Tk):
         tools_menu.add_command(label="Zoom In", command=self.zoom_in)
         tools_menu.add_command(label="Zoom Out", command=self.zoom_out)
         tools_menu.add_command(label="Reset Zoom", command=self.reset_zoom)
-        tools_menu.add_command(label="Toggle Dark Mode", command=self.toggle_dark_mode)
+        tools_menu.add_command(
+            label="Toggle Dark Mode", command=self.toggle_dark_mode
+        )
         menu_bar.add_cascade(label="Tools", menu=tools_menu)
+
+        js_menu = tk.Menu(menu_bar, tearoff=False)
+        js_menu.add_command(
+            label="Open JS Window", command=self.open_js_window
+        )
+        js_menu.add_command(
+            label="Run JavaScript...", command=self.run_js
+        )
+        menu_bar.add_cascade(label="JS Tools", menu=js_menu)
 
         settings_menu = tk.Menu(menu_bar, tearoff=False)
         settings_menu.add_command(
@@ -273,6 +286,7 @@ class TabbedBrowser(tk.Tk):
         self.bind_all("<Control-plus>", lambda e: self.zoom_in())
         self.bind_all("<Control-minus>", lambda e: self.zoom_out())
         self.bind_all("<Control-comma>", lambda e: self.open_preferences())
+        self.bind_all("<Control-j>", lambda e: self.open_js_window())
 
     def new_tab(self, url=None):
         if url is None:
@@ -369,12 +383,38 @@ class TabbedBrowser(tk.Tk):
         if html:
             if self.dark_mode:
                 html.add_css(
-                    "body { background-color: #222; color: #eee; } a { color: #8bf; }"
+                    "body { background-color: #222; color: #eee; } "
+                    "a { color: #8bf; }"
                 )
             else:
                 html.add_css(
-                    "body { background-color: white; color: black; } a { color: blue; }"
+                    "body { background-color: white; color: black; } "
+                    "a { color: blue; }"
                 )
+
+    def open_js_window(self, event=None):
+        try:
+            import webview
+        except Exception:
+            messagebox.showerror(
+                "Error", "pywebview is required for JS support"
+            )
+            return
+        url = self.url_var.get() or self.home_url
+        self.js_window = webview.create_window("JS Mode", url)
+        threading.Thread(target=webview.start, daemon=True).start()
+
+    def run_js(self, event=None):
+        if not self.js_window:
+            messagebox.showinfo("JS", "Open a JS window first")
+            return
+        code = simpledialog.askstring("Run JavaScript", "Enter script:")
+        if code:
+            try:
+                result = self.js_window.evaluate_js(code)
+                messagebox.showinfo("Result", str(result))
+            except Exception as exc:
+                messagebox.showerror("Error", str(exc))
 
     def close_tab(self, event=None):
         current = self.notebook.select()
@@ -386,7 +426,9 @@ class TabbedBrowser(tk.Tk):
     def view_source(self, event=None):
         url = self.url_var.get()
         try:
-            req = urllib.request.Request(url, headers={"User-Agent": self.user_agent})
+            req = urllib.request.Request(
+                url, headers={"User-Agent": self.user_agent}
+            )
             with urllib.request.urlopen(req) as resp:
                 source = resp.read().decode("utf-8", "replace")
         except Exception as exc:
