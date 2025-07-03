@@ -8,6 +8,8 @@ from tkinter import ttk
 from tkinter import messagebox, filedialog
 from tkinterweb import HtmlFrame
 import tkinterweb.utilities as tku
+import tkinterweb.bindings as tkweb_bindings
+from tkinter import TclError
 import urllib.request
 import urllib.parse
 import nethelper
@@ -16,6 +18,19 @@ import security
 SETTINGS_FILE = "settings.json"
 SESSION_FILE = "session.json"
 BLOCKLIST_FILE = "blocklist.json"
+
+# Patch tkinterweb to ignore missing node properties such as overflow-x
+_orig_get_prop = tkweb_bindings.TkinterWeb.get_node_property
+
+
+def _safe_get_node_property(self, node_handle, node_property, *args):
+    try:
+        return _orig_get_prop(self, node_handle, node_property, *args)
+    except TclError:
+        return ""
+
+
+tkweb_bindings.TkinterWeb.get_node_property = _safe_get_node_property
 
 
 class TabbedBrowser(tk.Tk):
