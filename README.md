@@ -9,7 +9,9 @@ the ability to open local HTML files, and a preferences dialog for setting the
 home page and default search engine. The address bar also doubles as a search
 box when you enter text that isn't a full URL. New tools include zoom controls,
 dark mode, saving pages, printing and exporting bookmarks. Sessions are
-restored on startup and the User-Agent and proxy can be configured.
+restored on startup and the User-Agent and proxy can be configured. URLs can
+also be blocked from the **Tools** menu (Ctrl+K) and managed via *Show
+Blocklist*.
 
 ## Requirements
 

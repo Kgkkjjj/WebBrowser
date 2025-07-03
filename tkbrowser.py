@@ -12,6 +12,7 @@ import nethelper
 
 SETTINGS_FILE = "settings.json"
 SESSION_FILE = "session.json"
+BLOCKLIST_FILE = "blocklist.json"
 
 
 class TabbedBrowser(tk.Tk):
@@ -35,8 +36,10 @@ class TabbedBrowser(tk.Tk):
         self.dark_mode = False
         self.js_window = None
         self.js_mode = False
+        self.blocklist = []
         self._load_settings()
         self._load_session()
+        self._load_blocklist()
         self._create_widgets()
         self.new_tab()
         self.protocol("WM_DELETE_WINDOW", self.on_close)
@@ -97,9 +100,28 @@ class TabbedBrowser(tk.Tk):
         except Exception:
             pass
 
+    def _load_blocklist(self):
+        self.blocklist = []
+        if os.path.exists(BLOCKLIST_FILE):
+            try:
+                with open(BLOCKLIST_FILE, "r", encoding="utf-8") as f:
+                    urls = json.load(f)
+                if isinstance(urls, list):
+                    self.blocklist = urls
+            except Exception:
+                pass
+
+    def _save_blocklist(self):
+        try:
+            with open(BLOCKLIST_FILE, "w", encoding="utf-8") as f:
+                json.dump(self.blocklist, f, indent=2)
+        except Exception:
+            pass
+
     def on_close(self):
         self._save_session()
         self._save_settings()
+        self._save_blocklist()
         self.destroy()
 
     def open_preferences(self, event=None):
@@ -258,6 +280,13 @@ class TabbedBrowser(tk.Tk):
         tools_menu.add_command(
             label="Toggle Dark Mode", command=self.toggle_dark_mode
         )
+        tools_menu.add_separator()
+        tools_menu.add_command(
+            label="Block URL", accelerator="Ctrl+K", command=self.add_block_url
+        )
+        tools_menu.add_command(
+            label="Show Blocklist", command=self.show_blocklist
+        )
         menu_bar.add_cascade(label="Tools", menu=tools_menu)
 
         self.js_var = tk.BooleanVar(value=self.js_mode)
@@ -298,6 +327,7 @@ class TabbedBrowser(tk.Tk):
         self.bind_all("<Control-comma>", lambda e: self.open_preferences())
         self.bind_all("<Control-j>", lambda e: self.open_js_window())
         self.bind_all("<Control-Shift-J>", lambda e: self.toggle_js_mode())
+        self.bind_all("<Control-k>", lambda e: self.add_block_url())
 
     def new_tab(self, url=None):
         if url is None:
@@ -333,6 +363,9 @@ class TabbedBrowser(tk.Tk):
             engine = self.search_engines.get(self.search_engine, self.home_url)
             url = engine.format(query)
             self.url_var.set(url)
+        if url in self.blocklist:
+            messagebox.showwarning("Blocked", "This URL is blocked.")
+            return
         html = self.current_html()
         if not html:
             return
@@ -583,6 +616,34 @@ class TabbedBrowser(tk.Tk):
     def clear_history(self, event=None):
         self.history.clear()
         self.status_var.set("History cleared")
+
+    def add_block_url(self, event=None):
+        url = self.url_var.get().strip()
+        if url and url not in self.blocklist:
+            self.blocklist.append(url)
+            self._save_blocklist()
+            self.status_var.set(f"Blocked {url}")
+
+    def show_blocklist(self, event=None):
+        if not self.blocklist:
+            messagebox.showinfo("Blocklist", "No URLs blocked.")
+            return
+        win = tk.Toplevel(self)
+        win.title("Blocked URLs")
+        lb = tk.Listbox(win)
+        for url in self.blocklist:
+            lb.insert(tk.END, url)
+        lb.pack(fill=tk.BOTH, expand=True)
+
+        def remove_selected():
+            sel = lb.curselection()
+            if sel:
+                url = lb.get(sel[0])
+                self.blocklist.remove(url)
+                lb.delete(sel[0])
+                self._save_blocklist()
+
+        ttk.Button(win, text="Remove", command=remove_selected).pack(pady=5)
 
     def go_home(self):
         self.url_var.set(self.home_url)
