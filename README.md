@@ -51,11 +51,12 @@ then run custom scripts via **JS Tools → Run JavaScript...**.
 Enable "Use JS Mode" from the same menu (Ctrl+Shift+J) to automatically open
 all pages in a WebView so complex sites work with JavaScript by default.
 
-### Optional Go helper
+### Optional Python helper
 
-Running `go run nethelper.go` starts a small server on port 8090 that can fetch
-remote pages via `/fetch?url=...`. You can load these URLs in the browser to see
-the integration with a Go networking component.
+Running `python nethelper.py` starts a small server on port `8090` that can
+fetch remote pages via `/fetch?url=...`. The browser automatically starts this
+server in the background when launched so you can load these URLs to experiment
+with the networking helper.
 
 ## License
 

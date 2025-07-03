@@ -8,6 +8,7 @@ from tkinterweb import HtmlFrame
 import tkinterweb.utilities as tku
 import urllib.request
 import urllib.parse
+import nethelper
 
 SETTINGS_FILE = "settings.json"
 SESSION_FILE = "session.json"
@@ -589,6 +590,7 @@ class TabbedBrowser(tk.Tk):
 
 
 def main():
+    threading.Thread(target=nethelper.run_server, daemon=True).start()
     TabbedBrowser().mainloop()
 
 
