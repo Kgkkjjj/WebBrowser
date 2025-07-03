@@ -1,8 +1,13 @@
+import json
+import os
 import tkinter as tk
 from tkinter import ttk
 from tkinter import messagebox, filedialog
 from tkinterweb import HtmlFrame
 import urllib.request
+import urllib.parse
+
+SETTINGS_FILE = "settings.json"
 
 
 class TabbedBrowser(tk.Tk):
@@ -12,11 +17,70 @@ class TabbedBrowser(tk.Tk):
         super().__init__()
         self.title("Tk Browser")
         self.geometry("1024x768")
+        self.search_engines = {
+            "DuckDuckGo": "https://duckduckgo.com/?q={}",
+            "Google": "https://www.google.com/search?q={}",
+        }
         self.home_url = "https://www.python.org"
+        self.search_engine = "DuckDuckGo"
         self.bookmarks = []
         self.history = []
+        self._load_settings()
         self._create_widgets()
         self.new_tab()
+
+    def _load_settings(self):
+        if os.path.exists(SETTINGS_FILE):
+            try:
+                with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                self.home_url = data.get("home_url", self.home_url)
+                self.search_engine = data.get(
+                    "search_engine", self.search_engine
+                )
+            except Exception:
+                pass
+
+    def _save_settings(self):
+        data = {"home_url": self.home_url, "search_engine": self.search_engine}
+        try:
+            with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2)
+        except Exception:
+            pass
+
+    def open_preferences(self, event=None):
+        win = tk.Toplevel(self)
+        win.title("Preferences")
+        tk.Label(win, text="Home URL:").grid(
+            row=0, column=0, sticky=tk.W, padx=5, pady=5
+        )
+        home_var = tk.StringVar(value=self.home_url)
+        ttk.Entry(win, textvariable=home_var, width=40).grid(
+            row=0, column=1, padx=5, pady=5
+        )
+
+        tk.Label(win, text="Search Engine:").grid(
+            row=1, column=0, sticky=tk.W, padx=5, pady=5
+        )
+        engine_var = tk.StringVar(value=self.search_engine)
+        ttk.Combobox(
+            win,
+            textvariable=engine_var,
+            values=list(self.search_engines.keys()),
+            state="readonly",
+        ).grid(row=1, column=1, padx=5, pady=5)
+
+        def save():
+            self.home_url = home_var.get() or self.home_url
+            self.search_engine = engine_var.get() or self.search_engine
+            self._save_settings()
+            win.destroy()
+
+        ttk.Button(win, text="Save", command=save).grid(
+            row=2, column=0, columnspan=2, pady=10
+        )
+        win.grab_set()
 
     def _create_widgets(self):
         self._create_menu()
@@ -101,6 +165,14 @@ class TabbedBrowser(tk.Tk):
         )
         menu_bar.add_cascade(label="Tools", menu=tools_menu)
 
+        settings_menu = tk.Menu(menu_bar, tearoff=False)
+        settings_menu.add_command(
+            label="Preferences",
+            accelerator="Ctrl+,",
+            command=self.open_preferences,
+        )
+        menu_bar.add_cascade(label="Settings", menu=settings_menu)
+
         self.config(menu=menu_bar)
         self.bind_all("<Control-t>", lambda e: self.new_tab())
         self.bind_all("<Control-o>", lambda e: self.open_file())
@@ -109,6 +181,7 @@ class TabbedBrowser(tk.Tk):
         self.bind_all("<Control-d>", lambda e: self.add_bookmark())
         self.bind_all("<Control-b>", lambda e: self.show_bookmarks())
         self.bind_all("<Control-h>", lambda e: self.show_history())
+        self.bind_all("<Control-comma>", lambda e: self.open_preferences())
 
     def new_tab(self, url=None):
         if url is None:
@@ -138,10 +211,12 @@ class TabbedBrowser(tk.Tk):
         return getattr(frame, "html", None)
 
     def load_url(self, event=None):
-        url = self.url_var.get()
+        url = self.url_var.get().strip()
         if not url.startswith("http://") and not url.startswith("https://"):
-            messagebox.showerror("Invalid URL", f"Cannot load URL: {url}")
-            return
+            query = urllib.parse.quote_plus(url)
+            engine = self.search_engines.get(self.search_engine, self.home_url)
+            url = engine.format(query)
+            self.url_var.set(url)
         html = self.current_html()
         if not html:
             return
