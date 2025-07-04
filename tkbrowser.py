@@ -481,12 +481,24 @@ class TabbedBrowser(tk.Tk):
     def _ensure_js_window(self, url):
         try:
             import importlib
-            importlib.import_module("webview")
+            webview = importlib.import_module("webview")
+            try:
+                webview.guilib.import_gtk()
+            except Exception:
+                try:
+                    webview.guilib.import_qt()
+                except Exception:
+                    messagebox.showerror(
+                        "Error",
+                        "pywebview requires GTK or Qt with Python bindings",
+                    )
+                    return None
         except Exception:
             messagebox.showerror(
                 "Error", "pywebview is required for JS support"
             )
             return None
+
         if self.js_window and self.js_window.poll() is None:
             return self.js_window
         script = (

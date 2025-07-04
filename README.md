@@ -70,6 +70,8 @@ to open the current page in a separate WebView process. JavaScript windows are
 opened externally, so running custom scripts inside them isn't supported. Enable
 "Use JS Mode" from the same menu (Ctrl+Shift+J) to automatically open all pages
 in an external WebView so complex sites work with JavaScript by default.
+If `pywebview` cannot find GTK or Qt bindings, the browser will disable these
+windows and show an error message when you try to open one.
 
 ### Optional Python helper
 
