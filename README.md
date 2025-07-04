@@ -1,12 +1,12 @@
 # Tk Browser
 
 Tk Browser is a cross-platform web browser built with Python's
-`tkinter` GUI toolkit. It now uses the
-[`tkinterweb`](https://github.com/Andereoo/TkinterWeb) widget by default so
-around **130** HTML tags and common attributes work out of the box. The built-in
-reader also understands a small subset of CSS for colours and text styles and
-executes simple JavaScript using `py_mini_racer`. Pages are cached locally and
-helpful error messages are shown when a fetch fails.
+`tkinter` GUI toolkit. It ships with its own lightweight HTML reader so it does
+not rely on external rendering libraries. The reader now recognises over **320**
+HTML tags and attributes, around **200** JavaScript constructs and about **130**
+common CSS properties. Inline JavaScript is executed using
+`py_mini_racer` when available. Pages are cached locally and helpful error
+messages are shown when a fetch fails.
 With JavaScript mode enabled, complex sites such as
 [python.org](https://www.python.org) display correctly.
 It works on Windows and Linux as long as Python and the required packages are
@@ -24,14 +24,13 @@ Blocklist*.
 
 - Python 3.8+
 - `tkinter` (usually bundled with Python on Windows and most Linux distros)
-- `tkinterweb` for full HTML/CSS support
 - Optional: `pywebview` for JavaScript windows
 - Optional: `py_mini_racer` to execute inline JavaScript in the built-in reader
 
 Install the dependencies with pip:
 
 ```bash
-pip install tkinterweb pywebview py_mini_racer
+pip install pywebview py_mini_racer
 ```
 
 ## Usage

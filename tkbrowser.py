@@ -6,16 +6,17 @@ import sys
 import tkinter as tk
 from tkinter import ttk
 from tkinter import messagebox, filedialog
-from htmlreader import SimpleHtmlReader
-try:
-    from htmlreader import TkHtmlReader, TKINTERWEB_AVAILABLE
-except Exception:  # pragma: no cover - optional dependency
-    TKINTERWEB_AVAILABLE = False
-    TkHtmlReader = None
 import urllib.request
 import urllib.parse
+
+from htmlreader import SimpleHtmlReader
 import nethelper
 import security
+
+# The browser now exclusively uses the built-in ``SimpleHtmlReader`` and no
+# longer relies on the optional ``tkinterweb`` package.
+TkHtmlReader = None
+TKINTERWEB_AVAILABLE = False
 
 SETTINGS_FILE = "settings.json"
 SESSION_FILE = "session.json"
@@ -341,20 +342,12 @@ class TabbedBrowser(tk.Tk):
         if url is None:
             url = self.home_url
         frame = ttk.Frame(self.notebook)
-        if TKINTERWEB_AVAILABLE:
-            html = TkHtmlReader(
-                frame,
-                link_callback=self._on_link,
-                user_agent=self.user_agent,
-                error_callback=self._on_error,
-            )
-        else:
-            html = SimpleHtmlReader(
-                frame,
-                link_callback=self._on_link,
-                user_agent=self.user_agent,
-                error_callback=self._on_error,
-            )
+        html = SimpleHtmlReader(
+            frame,
+            link_callback=self._on_link,
+            user_agent=self.user_agent,
+            error_callback=self._on_error,
+        )
         html.pack(fill=tk.BOTH, expand=True)
         frame.html = html
         self.notebook.add(frame, text="New Tab")

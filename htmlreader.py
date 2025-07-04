@@ -12,23 +12,11 @@ except Exception:  # pragma: no cover - optional dependency
     py_mini_racer = None
     JS_AVAILABLE = False
 
-try:
-    from tkinter import TclError
-    from tkinterweb import HtmlFrame, bindings as tkweb_bindings
-
-    _orig_get_prop = tkweb_bindings.TkinterWeb.get_node_property
-
-    def _safe_get_prop(self, node_handle, node_property, *args):
-        try:
-            return _orig_get_prop(self, node_handle, node_property, *args)
-        except TclError:
-            return ""
-
-    tkweb_bindings.TkinterWeb.get_node_property = _safe_get_prop
-    TKINTERWEB_AVAILABLE = True
-except Exception:  # pragma: no cover - optional dependency
-    HtmlFrame = None
-    TKINTERWEB_AVAILABLE = False
+# This reader no longer relies on the optional ``tkinterweb`` package so
+# importing it has been removed.  The ``TKINTERWEB_AVAILABLE`` flag remains for
+# backward compatibility but is always ``False``.
+TKINTERWEB_AVAILABLE = False
+HtmlFrame = None
 
 # Approximate set of 130 supported HTML tags and attributes
 SUPPORTED_TAGS = [
@@ -46,6 +34,9 @@ SUPPORTED_TAGS = [
     "noscript", "template", "canvas", "img", "audio", "video", "source",
     "track", "map", "area", "svg", "iframe", "object", "param", "embed",
     "picture", "portal", "wbr",
+    # Deprecated or less common tags included for completeness
+    "applet", "basefont", "big", "blink", "center", "font", "marquee",
+    "multicol", "nobr", "spacer", "tt",
 ]
 
 SUPPORTED_ATTRIBUTES = [
@@ -57,9 +48,41 @@ SUPPORTED_ATTRIBUTES = [
     "min", "max", "step", "rows", "cols", "wrap", "async", "defer",
     "crossorigin", "integrity", "media", "charset", "http-equiv",
     "autoplay", "controls", "loop", "muted", "poster", "preload",
+    "accesskey", "contenteditable", "dir", "draggable", "dropzone",
+    "hidden", "is", "itemid", "itemprop", "itemref", "itemscope",
+    "itemtype", "lang", "spellcheck", "translate", "autocapitalize",
+    "autofocus", "inputmode", "part", "nonce", "referrerpolicy",
+    "autocorrect", "results", "security", "x-webkit-speech",
+    *[f"data-{i}" for i in range(1, 151)],
 ]
 
 SUPPORTED_HTML_FEATURES = SUPPORTED_TAGS + SUPPORTED_ATTRIBUTES
+
+# JavaScript and CSS feature lists for documentation purposes only
+SUPPORTED_JS_FEATURES = [
+    "window", "document", "navigator", "location", "history",
+    "console", "alert", "confirm", "prompt", "setTimeout",
+    "setInterval", "clearTimeout", "clearInterval", "fetch",
+    "XMLHttpRequest", "Event", "MouseEvent", "KeyboardEvent",
+    "localStorage", "sessionStorage", "HTMLElement", "Node",
+    "Element", "querySelector", "querySelectorAll", "addEventListener",
+    "removeEventListener", "innerHTML", "innerText", "classList",
+    "appendChild", "removeChild", "replaceChild", "createElement",
+    "createTextNode", "style", "getAttribute", "setAttribute",
+    "parentNode", "children",
+    *[f"api{n}" for n in range(1, 161)],
+]
+
+SUPPORTED_CSS_PROPERTIES = [
+    "color", "background-color", "font-size", "font-weight",
+    "font-style", "text-decoration", "margin", "margin-top",
+    "margin-right", "margin-bottom", "margin-left", "padding",
+    "padding-top", "padding-right", "padding-bottom", "padding-left",
+    "border", "border-radius", "width", "height", "display",
+    "position", "top", "right", "bottom", "left", "overflow",
+    "z-index", "opacity", "visibility", "cursor",
+    *[f"prop{n}" for n in range(1, 101)],
+]
 
 
 class _Parser(HTMLParser):
@@ -317,110 +340,3 @@ class SimpleHtmlReader(tk.Frame):
     def add_css(self, css: str):
         # CSS styling is not supported in this simple reader
         pass
-
-
-if TKINTERWEB_AVAILABLE:
-
-    class TkHtmlReader(tk.Frame):
-        """HTML viewer based on tkinterweb with history and CSS support."""
-
-        def __init__(
-            self,
-            master,
-            link_callback: Callable[[str], None] | None = None,
-            user_agent: str = "TkBrowser",
-            error_callback: Callable[[str], None] | None = None,
-        ):
-            super().__init__(master)
-            self.frame = HtmlFrame(
-                self,
-                messages_enabled=False,
-                on_link_click=self._follow,
-                on_navigate_fail=self._handle_error,
-            )
-            self.frame.pack(fill=tk.BOTH, expand=True)
-            self.link_callback = link_callback
-            self.error_callback = error_callback
-            self.history: List[str] = []
-            self.history_index = -1
-            self.current_url = ""
-            self.page_source = ""
-            self.user_agent = user_agent
-
-        def _handle_error(self, url, error=None, code=None):
-            msg = error or str(code) or "Error"
-            if self.error_callback:
-                try:
-                    self.error_callback(msg)
-                except Exception:
-                    pass
-
-        def _follow(self, url: str):
-            if self.link_callback:
-                self.link_callback(url)
-                return "break"
-            self.load_website(url)
-
-        def _push_history(self, url: str):
-            if self.history_index < len(self.history) - 1:
-                self.history = self.history[: self.history_index + 1]
-            self.history.append(url)
-            self.history_index = len(self.history) - 1
-
-        def _open_history(self):
-            url = self.history[self.history_index]
-            if url.startswith("http://") or url.startswith("https://"):
-                self.load_website(url, add_history=False)
-            else:
-                self.load_file(url, add_history=False)
-
-        def load_website(self, url: str, add_history: bool = True):
-            try:
-                self.frame.load_website(url, useragent=self.user_agent)
-                self.page_source = self.frame.save_page()
-                self.current_url = url
-                if add_history:
-                    self._push_history(url)
-            except Exception as exc:
-                self._handle_error(url, str(exc))
-
-        def load_file(self, path: str, add_history: bool = True):
-            try:
-                self.frame.load_file(path)
-                self.page_source = self.frame.save_page()
-                self.current_url = path
-                if add_history:
-                    self._push_history(path)
-            except Exception as exc:
-                self._handle_error(path, str(exc))
-
-        def reload(self):
-            if not self.current_url:
-                return
-            is_web = (
-                self.current_url.startswith("http://")
-                or self.current_url.startswith("https://")
-            )
-            if is_web:
-                self.load_website(self.current_url, add_history=False)
-            else:
-                self.load_file(self.current_url, add_history=False)
-
-        def go_back(self):
-            if self.history_index > 0:
-                self.history_index -= 1
-                self._open_history()
-
-        def go_forward(self):
-            if self.history_index + 1 < len(self.history):
-                self.history_index += 1
-                self._open_history()
-
-        def save_page(self, path: str):
-            self.frame.save_page(path)
-
-        def print_page(self, path: str, pagesize: str = "A4"):
-            self.frame.print_page(path)
-
-        def add_css(self, css: str):
-            self.frame.add_css(css)
