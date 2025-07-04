@@ -1,7 +1,9 @@
 import tkinter as tk
 from html.parser import HTMLParser
+import urllib.error
+import urllib.parse
 import urllib.request
-from typing import List, Tuple, Callable
+from typing import Dict, List, Tuple, Callable
 
 
 class _Parser(HTMLParser):
@@ -14,7 +16,7 @@ class _Parser(HTMLParser):
     def handle_starttag(self, tag, attrs):
         if tag == 'br':
             self.text.insert(tk.END, '\n')
-        elif tag in ('p', 'div'):
+        elif tag in ('p', 'div', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'):
             self.text.insert(tk.END, '\n\n')
         elif tag == 'a':
             href = dict(attrs).get('href')
@@ -43,17 +45,21 @@ class SimpleHtmlReader(tk.Frame):
         master,
         link_callback: Callable[[str], None] | None = None,
         user_agent: str = "TkBrowser",
+        error_callback: Callable[[str], None] | None = None,
     ):
         super().__init__(master)
         self.text = tk.Text(self, wrap='word')
         self.text.pack(fill=tk.BOTH, expand=True)
         self.link_callback = link_callback
+        self.error_callback = error_callback
         self.links: dict[str, str] = {}
         self.history: List[str] = []
         self.history_index = -1
         self.current_url = ''
         self.page_source = ''
         self.user_agent = user_agent
+        self.cache: Dict[str, str] = {}
+        self.error_message = ""
 
     def _display_html(self, html: str):
         self.text.delete('1.0', tk.END)
@@ -67,9 +73,36 @@ class SimpleHtmlReader(tk.Frame):
                 tag, '<Button-1>', lambda e, u=href: self._follow(u)
             )
             self.links[tag] = href
+        self.error_message = ""
+
+    def _display_error(self, msg: str):
+        self.text.delete('1.0', tk.END)
+        self.text.insert(tk.END, f"Error: {msg}\n")
+        self.error_message = msg
+        if self.error_callback:
+            try:
+                self.error_callback(msg)
+            except Exception:
+                pass
+
+    def clear_cache(self):
+        self.cache.clear()
+
+    def _fetch_url(self, url: str, timeout: int = 10) -> str:
+        if url in self.cache:
+            return self.cache[url]
+        req = urllib.request.Request(
+            url, headers={"User-Agent": self.user_agent}
+        )
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            html = resp.read().decode("utf-8", "replace")
+        self.cache[url] = html
+        return html
 
     def _follow(self, url: str):
         if self.link_callback:
+            if self.current_url.startswith("http"):
+                url = urllib.parse.urljoin(self.current_url, url)
             self.link_callback(url)
 
     def _push_history(self, url: str):
@@ -86,11 +119,11 @@ class SimpleHtmlReader(tk.Frame):
             self.load_file(url, add_history=False)
 
     def load_website(self, url: str, add_history: bool = True):
-        req = urllib.request.Request(
-            url, headers={"User-Agent": self.user_agent}
-        )
-        with urllib.request.urlopen(req) as resp:
-            html = resp.read().decode('utf-8', 'replace')
+        try:
+            html = self._fetch_url(url)
+        except urllib.error.URLError as exc:
+            self._display_error(str(exc))
+            return
         self.page_source = html
         self.current_url = url
         self._display_html(html)
@@ -98,8 +131,12 @@ class SimpleHtmlReader(tk.Frame):
             self._push_history(url)
 
     def load_file(self, path: str, add_history: bool = True):
-        with open(path, 'r', encoding='utf-8', errors='ignore') as f:
-            html = f.read()
+        try:
+            with open(path, 'r', encoding='utf-8', errors='ignore') as f:
+                html = f.read()
+        except OSError as exc:
+            self._display_error(str(exc))
+            return
         self.page_source = html
         self.current_url = path
         self._display_html(html)
@@ -109,6 +146,7 @@ class SimpleHtmlReader(tk.Frame):
     def reload(self):
         if not self.current_url:
             return
+        self.error_message = ""
         if (
             self.current_url.startswith("http://")
             or self.current_url.startswith("https://")

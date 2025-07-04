@@ -2,6 +2,8 @@
 
 Tk Browser is a cross-platform web browser built with Python's
 `tkinter` GUI toolkit and a simple built-in HTML reader.
+The reader caches pages locally and displays helpful error messages when a
+fetch fails so browsing is more reliable.
 It works on Windows and Linux as long as Python and the required packages are
 installed. The interface supports multiple tabs and developer tools like
 viewing page source. Recent updates add bookmarks, a simple history viewer,

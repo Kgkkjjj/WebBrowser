@@ -336,7 +336,9 @@ class TabbedBrowser(tk.Tk):
         if url is None:
             url = self.home_url
         frame = ttk.Frame(self.notebook)
-        html = SimpleHtmlReader(frame, link_callback=self._on_link)
+        html = SimpleHtmlReader(
+            frame, link_callback=self._on_link, error_callback=self._on_error
+        )
         html.pack(fill=tk.BOTH, expand=True)
         frame.html = html
         self.notebook.add(frame, text="New Tab")
@@ -355,6 +357,10 @@ class TabbedBrowser(tk.Tk):
     def _on_link(self, url: str):
         self.url_var.set(url)
         self.load_url()
+
+    def _on_error(self, msg: str):
+        self.status_var.set(f"Error: {msg}")
+        messagebox.showerror("Error", msg)
 
     def current_html(self):
         current = self.notebook.select()
