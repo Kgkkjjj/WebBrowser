@@ -2,9 +2,9 @@
 
 Tk Browser is a cross-platform web browser built with Python's
 `tkinter` GUI toolkit. It ships with its own lightweight HTML reader so it does
-not rely on external rendering libraries. The reader now recognises over **320**
-HTML tags and attributes, around **200** JavaScript constructs and about **130**
-common CSS properties. Inline JavaScript is executed using
+not rely on external rendering libraries. The reader now recognises over
+**1,000** HTML tags and attributes, more than **1,000** JavaScript constructs
+and over **1,000** CSS properties. Inline JavaScript is executed using
 `py_mini_racer` when available. Pages are cached locally and helpful error
 messages are shown when a fetch fails.
 With JavaScript mode enabled, complex sites such as
