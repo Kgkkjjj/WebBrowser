@@ -1,7 +1,7 @@
 # Tk Browser
 
 Tk Browser is a cross-platform web browser built with Python's
-`tkinter` GUI toolkit and [`tkinterweb`](https://github.com/Andereoo/TkinterWeb).
+`tkinter` GUI toolkit and a simple built-in HTML reader.
 It works on Windows and Linux as long as Python and the required packages are
 installed. The interface supports multiple tabs and developer tools like
 viewing page source. Recent updates add bookmarks, a simple history viewer,
@@ -17,12 +17,12 @@ Blocklist*.
 
 - Python 3.8+
 - `tkinter` (usually bundled with Python on Windows and most Linux distros)
-- `tkinterweb` package for rendering HTML
+- Optional: `pywebview` for JavaScript support
 
-Install the dependencies via pip:
+Install the optional dependency with pip:
 
 ```bash
-pip install tkinterweb pywebview
+pip install pywebview
 ```
 
 ## Usage

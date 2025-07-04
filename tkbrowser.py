@@ -6,10 +6,7 @@ import sys
 import tkinter as tk
 from tkinter import ttk
 from tkinter import messagebox, filedialog
-from tkinterweb import HtmlFrame
-import tkinterweb.utilities as tku
-import tkinterweb.bindings as tkweb_bindings
-from tkinter import TclError
+from htmlreader import SimpleHtmlReader
 import urllib.request
 import urllib.parse
 import nethelper
@@ -19,22 +16,9 @@ SETTINGS_FILE = "settings.json"
 SESSION_FILE = "session.json"
 BLOCKLIST_FILE = "blocklist.json"
 
-# Patch tkinterweb to ignore missing node properties such as overflow-x
-_orig_get_prop = tkweb_bindings.TkinterWeb.get_node_property
-
-
-def _safe_get_node_property(self, node_handle, node_property, *args):
-    try:
-        return _orig_get_prop(self, node_handle, node_property, *args)
-    except TclError:
-        return ""
-
-
-tkweb_bindings.TkinterWeb.get_node_property = _safe_get_node_property
-
 
 class TabbedBrowser(tk.Tk):
-    """A tabbed web browser using Tkinter and tkinterweb."""
+    """A tabbed web browser using Tkinter and a custom HTML reader."""
 
     def __init__(self):
         super().__init__()
@@ -352,7 +336,7 @@ class TabbedBrowser(tk.Tk):
         if url is None:
             url = self.home_url
         frame = ttk.Frame(self.notebook)
-        html = HtmlFrame(frame, horizontal_scrollbar="auto", experimental=True)
+        html = SimpleHtmlReader(frame, link_callback=self._on_link)
         html.pack(fill=tk.BOTH, expand=True)
         frame.html = html
         self.notebook.add(frame, text="New Tab")
@@ -367,6 +351,10 @@ class TabbedBrowser(tk.Tk):
             pass
         finally:
             self.status_var.set(url)
+
+    def _on_link(self, url: str):
+        self.url_var.set(url)
+        self.load_url()
 
     def current_html(self):
         current = self.notebook.select()
@@ -398,7 +386,8 @@ class TabbedBrowser(tk.Tk):
         html = self.current_html()
         if not html:
             return
-        tku.HEADERS["User-Agent"] = self.user_agent
+        if hasattr(html, "user_agent"):
+            html.user_agent = self.user_agent
         if self.js_mode:
             self._ensure_js_window(url)
         self.status_var.set("Loading...")
