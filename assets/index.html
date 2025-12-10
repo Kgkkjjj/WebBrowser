@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>LKJ IDE</title>
+  <style>
+    :root {
+      --bg: #0e1116;
+      --panel: #151a21;
+      --text: #e3ecf5;
+      --accent: #3fa9f5;
+      --border: #1f2732;
+    }
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: "Fira Code", "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      display: grid;
+      grid-template-rows: 56px 1fr;
+    }
+    header {
+      background: #0a0d12;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      gap: 16px;
+    }
+    header .title {
+      font-weight: 700;
+      letter-spacing: 1px;
+    }
+    header button {
+      background: var(--accent);
+      color: #0a0d12;
+      border: none;
+      padding: 10px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 700;
+      transition: transform 120ms ease;
+    }
+    header button:hover { transform: translateY(-1px); }
+    main { display: grid; grid-template-columns: 280px 1fr 420px; height: 100%; }
+    .panel {
+      border-right: 1px solid var(--border);
+      background: var(--panel);
+      overflow: auto;
+    }
+    .panel h2 {
+      margin: 12px;
+      font-size: 14px;
+      text-transform: uppercase;
+      color: #8fa3c5;
+      letter-spacing: 0.05em;
+    }
+    #explorer ul { list-style: none; padding: 0 12px 24px 12px; }
+    #explorer li {
+      padding: 6px 8px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: background 120ms ease;
+    }
+    #explorer li:hover { background: #1d2430; }
+    #editor { padding: 12px; background: #0f131b; }
+    #editor textarea {
+      width: 100%;
+      height: 80vh;
+      background: #0c1016;
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 14px;
+      resize: vertical;
+    }
+    #terminal { padding: 12px; background: #0f131b; border-left: 1px solid var(--border); }
+    #terminal pre {
+      background: #0c1016;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      height: 70vh;
+      overflow: auto;
+    }
+    #terminal input {
+      width: 100%;
+      padding: 10px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: #0c1016;
+      color: var(--text);
+      margin-top: 12px;
+    }
+    .pill { font-size: 11px; padding: 2px 6px; border-radius: 10px; background: #2b3340; color: #c4d2eb; }
+    .row { display: flex; gap: 8px; align-items: center; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="title">LKJ • Hyper-Integrated Web IDE</div>
+    <button onclick="reloadExplorer()">Refresh Files</button>
+    <button onclick="saveFile()">Save</button>
+    <button onclick="executeCommand()">Run Command</button>
+    <div id="status"></div>
+  </header>
+  <main>
+    <section class="panel" id="explorer">
+      <h2>Workspace</h2>
+      <ul id="file-list"></ul>
+    </section>
+    <section id="editor">
+      <h2>Editor</h2>
+      <div class="row">
+        <div>Editing:</div>
+        <div id="current-file" class="pill">(none)</div>
+      </div>
+      <textarea id="editor-area" placeholder="Select a file to edit"></textarea>
+    </section>
+    <section id="terminal">
+      <h2>Command Forge</h2>
+      <pre id="terminal-output">$ ready</pre>
+      <input id="command-input" placeholder="e.g. ls -la" onkeydown="if(event.key==='Enter') executeCommand();" />
+    </section>
+  </main>
+  <script>
+    let currentPath = null;
+
+    function setStatus(message) {
+      const status = document.getElementById('status');
+      status.textContent = message;
+      setTimeout(() => status.textContent = '', 3000);
+    }
+
+    async function reloadExplorer(path = '.') {
+      const res = await fetch(`/api/files?path=${encodeURIComponent(path)}`);
+      if (!res.ok) { setStatus('Failed to load explorer'); return; }
+      const data = await res.json();
+      const list = document.getElementById('file-list');
+      list.innerHTML = '';
+      data.entries.forEach(entry => {
+        const li = document.createElement('li');
+        li.innerHTML = `<span>${entry.name}</span><span class="pill">${entry.kind}</span>`;
+        li.onclick = () => {
+          const nextPath = `${path}/${entry.name}`;
+          if (entry.kind === 'dir') reloadExplorer(nextPath);
+          else loadFile(nextPath);
+        };
+        list.appendChild(li);
+      });
+    }
+
+    async function loadFile(path) {
+      const res = await fetch(`/api/file?path=${encodeURIComponent(path)}`);
+      if (!res.ok) { setStatus('Failed to load file'); return; }
+      const data = await res.json();
+      currentPath = data.path;
+      document.getElementById('current-file').textContent = currentPath;
+      document.getElementById('editor-area').value = data.content;
+      setStatus(`Loaded ${currentPath}`);
+    }
+
+    async function saveFile() {
+      if (!currentPath) { setStatus('No file selected'); return; }
+      const body = document.getElementById('editor-area').value;
+      const res = await fetch(`/api/file?path=${encodeURIComponent(currentPath)}`, {
+        method: 'POST',
+        body
+      });
+      if (!res.ok) { setStatus('Save failed'); return; }
+      setStatus('Saved');
+    }
+
+    async function executeCommand() {
+      const input = document.getElementById('command-input');
+      const command = input.value.trim();
+      if (!command) { setStatus('No command'); return; }
+      const res = await fetch('/api/exec', { method: 'POST', body: command });
+      const data = await res.json();
+      const out = document.getElementById('terminal-output');
+      out.textContent += `\n$ ${data.cmd}\n${data.output}`;
+      out.scrollTop = out.scrollHeight;
+      input.value = '';
+    }
+
+    reloadExplorer('.');
+  </script>
+</body>
+</html>
