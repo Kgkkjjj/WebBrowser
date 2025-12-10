@@ -293,6 +293,19 @@
             app:iconTint="@color/onPrimary"
             android:textColor="@color/onPrimary"
             app:backgroundTint="@color/primaryVariant" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/updateButton"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:text="@string/action_check_updates"
+            app:icon="@android:drawable/ic_menu_rotate"
+            app:strokeColor="@color/onSurface"
+            app:strokeWidth="1dp"
+            android:textColor="@color/onSurface"
+            app:iconTint="@color/onSurface" />
     </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

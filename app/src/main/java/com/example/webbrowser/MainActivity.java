@@ -37,6 +37,13 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -73,6 +80,7 @@ public class MainActivity extends AppCompatActivity implements TabAdapter.TabLis
         setupUi();
         setupWebView();
         createTab(getString(R.string.default_home));
+        checkForUpdates(false);
     }
 
     private void setupUi() {
@@ -98,6 +106,7 @@ public class MainActivity extends AppCompatActivity implements TabAdapter.TabLis
         MaterialButton safetyButton = findViewById(R.id.safetyButton);
         MaterialButton trackingButton = findViewById(R.id.trackingButton);
         MaterialButton purgeButton = findViewById(R.id.purgeButton);
+        MaterialButton updateButton = findViewById(R.id.updateButton);
 
         tabAdapter = new TabAdapter(tabs, this);
         tabList.setLayoutManager(new LinearLayoutManager(this, RecyclerView.HORIZONTAL, false));
@@ -131,6 +140,7 @@ public class MainActivity extends AppCompatActivity implements TabAdapter.TabLis
         safetyButton.setOnClickListener(v -> toggleSafeMode((MaterialButton) v));
         trackingButton.setOnClickListener(v -> toggleTrackingProtection((MaterialButton) v));
         purgeButton.setOnClickListener(v -> purgeSession());
+        updateButton.setOnClickListener(v -> checkForUpdates(true));
 
         refreshLayout.setOnRefreshListener(() -> {
             webView.reload();
@@ -496,6 +506,105 @@ public class MainActivity extends AppCompatActivity implements TabAdapter.TabLis
             }
         }
         return null;
+    }
+
+    private void checkForUpdates(boolean userInitiated) {
+        new Thread(() -> {
+            UpdateInfo info = fetchUpdateInfo();
+            runOnUiThread(() -> {
+                if (!info.success) {
+                    if (userInitiated) {
+                        Toast.makeText(this, info.message, Toast.LENGTH_SHORT).show();
+                    }
+                    return;
+                }
+                if (info.versionCode > BuildConfig.VERSION_CODE) {
+                    showUpdateDialog(info);
+                } else if (userInitiated) {
+                    Toast.makeText(this, R.string.toast_update_current, Toast.LENGTH_SHORT).show();
+                }
+            });
+        }).start();
+    }
+
+    private UpdateInfo fetchUpdateInfo() {
+        HttpURLConnection connection = null;
+        try {
+            URL url = new URL(getString(R.string.update_manifest_url));
+            connection = (HttpURLConnection) url.openConnection();
+            connection.setConnectTimeout(5000);
+            connection.setReadTimeout(5000);
+            connection.setRequestProperty("Accept", "application/json");
+            int code = connection.getResponseCode();
+            if (code != HttpURLConnection.HTTP_OK) {
+                return UpdateInfo.error(getString(R.string.toast_update_error, code));
+            }
+            String body = slurp(connection.getInputStream());
+            JSONObject json = new JSONObject(body);
+            int versionCode = json.optInt("versionCode", 0);
+            String versionName = json.optString("versionName", "");
+            String downloadUrl = json.optString("downloadUrl", "");
+            String notes = json.optString("changelog", getString(R.string.label_no_changelog));
+            return UpdateInfo.success(versionCode, versionName, downloadUrl, notes);
+        } catch (IOException | JSONException e) {
+            return UpdateInfo.error(getString(R.string.toast_update_failed));
+        } finally {
+            if (connection != null) {
+                connection.disconnect();
+            }
+        }
+    }
+
+    private void showUpdateDialog(UpdateInfo info) {
+        String versionLabel = TextUtils.isEmpty(info.versionName) ? String.valueOf(info.versionCode) : info.versionName;
+        new AlertDialog.Builder(this)
+                .setTitle(getString(R.string.title_update_available, versionLabel))
+                .setMessage(getString(R.string.message_update_available, versionLabel, info.notes))
+                .setPositiveButton(R.string.action_update_now, (dialog, which) -> {
+                    if (!TextUtils.isEmpty(info.downloadUrl)) {
+                        Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(info.downloadUrl));
+                        startActivity(intent);
+                    }
+                })
+                .setNegativeButton(R.string.action_later, null)
+                .show();
+    }
+
+    private String slurp(InputStream inputStream) throws IOException {
+        StringBuilder builder = new StringBuilder();
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                builder.append(line);
+            }
+        }
+        return builder.toString();
+    }
+
+    private static class UpdateInfo {
+        final boolean success;
+        final int versionCode;
+        final String versionName;
+        final String downloadUrl;
+        final String notes;
+        final String message;
+
+        private UpdateInfo(boolean success, int versionCode, String versionName, String downloadUrl, String notes, String message) {
+            this.success = success;
+            this.versionCode = versionCode;
+            this.versionName = versionName;
+            this.downloadUrl = downloadUrl;
+            this.notes = notes;
+            this.message = message;
+        }
+
+        static UpdateInfo success(int versionCode, String versionName, String downloadUrl, String notes) {
+            return new UpdateInfo(true, versionCode, versionName, downloadUrl, notes, "");
+        }
+
+        static UpdateInfo error(String message) {
+            return new UpdateInfo(false, 0, "", "", "", message);
+        }
     }
 
     private static class QuickLink {

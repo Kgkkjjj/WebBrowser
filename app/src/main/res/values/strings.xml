@@ -35,10 +35,20 @@
     <string name="toast_tracking_on">Third-party tracking blocked</string>
     <string name="toast_tracking_off">Tracking protection disabled</string>
     <string name="toast_purged">Session wiped</string>
+    <string name="toast_update_current">MIC Browser is up to date</string>
+    <string name="toast_update_failed">Unable to reach the update service</string>
+    <string name="toast_update_error">Update check failed (%1$d)</string>
     <string name="title_security_gate">Safety interlock</string>
     <string name="message_security_gate">This page raised a guard: %1$s</string>
     <string name="reason_unknown_host">Unknown host</string>
     <string name="reason_unencrypted">Unencrypted connection</string>
     <string name="reason_flagged_host">Potentially risky (%1$s)</string>
+    <string name="title_update_available">Update ready: %1$s</string>
+    <string name="message_update_available">Version %1$s is available with:\n%2$s</string>
+    <string name="action_update_now">Update now</string>
+    <string name="action_later">Later</string>
+    <string name="label_no_changelog">No changelog provided.</string>
+    <string name="action_check_updates">Updates</string>
+    <string name="update_manifest_url">https://example.com/mic-browser/update.json</string>
     <string name="default_home">https://www.duckduckgo.com</string>
 </resources>
