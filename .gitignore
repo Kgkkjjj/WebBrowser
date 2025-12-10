@@ -1,32 +1,26 @@
-# Prerequisites
-*.d
+# Gradle
+.gradle/
+build/
+**/build/
+local.properties
 
-# Compiled Object files
-*.slo
-*.lo
-*.o
-*.obj
+# Android Studio
+.idea/
+*.iml
+captures/
+.externalNativeBuild/
+.cxx/
 
-# Precompiled Headers
-*.gch
-*.pch
+# Generated files
+app/src/main/res/drawable/ic_launcher.png
+app/src/main/res/drawable/ic_launcher_round.png
+app/src/main/res/mipmap-*/
 
-# Compiled Dynamic libraries
-*.so
-*.dylib
-*.dll
-
-# Fortran module files
-*.mod
-*.smod
-
-# Compiled Static libraries
-*.lai
-*.la
-*.a
-*.lib
-
-# Executables
-*.exe
-*.out
-*.app
+# Misc
+*.apk
+*.ap_*
+*.dex
+*.class
+*.log
+*.tmp
+*.DS_Store
