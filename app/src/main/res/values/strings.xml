@@ -15,6 +15,12 @@
     <string name="action_desktop_off">Desktop off</string>
     <string name="action_incognito_on">Incognito on</string>
     <string name="action_incognito_off">Incognito off</string>
+    <string name="action_safe_on">Safe mode</string>
+    <string name="action_safe_off">Safe off</string>
+    <string name="action_tracking_on">Tracking shield</string>
+    <string name="action_tracking_off">Shield off</string>
+    <string name="action_purge_session">Purge</string>
+    <string name="action_proceed_anyway">Proceed anyway</string>
     <string name="action_home">Home</string>
     <string name="label_bookmarks">Bookmarks</string>
     <string name="label_history">History</string>
@@ -24,5 +30,15 @@
     <string name="empty_collection">Nothing to show yet</string>
     <string name="incognito_on">Incognito enabled</string>
     <string name="incognito_off">Incognito disabled</string>
+    <string name="toast_safe_on">Security gate active</string>
+    <string name="toast_safe_off">Security gate relaxed</string>
+    <string name="toast_tracking_on">Third-party tracking blocked</string>
+    <string name="toast_tracking_off">Tracking protection disabled</string>
+    <string name="toast_purged">Session wiped</string>
+    <string name="title_security_gate">Safety interlock</string>
+    <string name="message_security_gate">This page raised a guard: %1$s</string>
+    <string name="reason_unknown_host">Unknown host</string>
+    <string name="reason_unencrypted">Unencrypted connection</string>
+    <string name="reason_flagged_host">Potentially risky (%1$s)</string>
     <string name="default_home">https://www.duckduckgo.com</string>
 </resources>

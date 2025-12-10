@@ -247,4 +247,52 @@
             app:iconTint="@color/onSurface" />
     </LinearLayout>
 
+    <LinearLayout
+        android:id="@+id/safetyRow"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="12dp"
+        android:layout_marginBottom="12dp"
+        android:gravity="center"
+        android:orientation="horizontal"
+        app:layout_constraintBottom_toBottomOf="@id/addressCard"
+        app:layout_constraintStart_toStartOf="parent">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/safetyButton"
+            style="@style/Widget.MaterialComponents.Button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/action_safe_on"
+            app:icon="@android:drawable/ic_lock_idle_lock"
+            app:iconTint="@color/onPrimary"
+            app:backgroundTint="@color/secondaryVariant"
+            android:textColor="@color/onPrimary" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/trackingButton"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:text="@string/action_tracking_on"
+            app:icon="@android:drawable/ic_menu_info_details"
+            app:strokeColor="@color/onSurface"
+            app:strokeWidth="1dp"
+            android:textColor="@color/onSurface"
+            app:iconTint="@color/onSurface" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/purgeButton"
+            style="@style/Widget.MaterialComponents.Button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:text="@string/action_purge_session"
+            app:icon="@android:drawable/ic_menu_delete"
+            app:iconTint="@color/onPrimary"
+            android:textColor="@color/onPrimary"
+            app:backgroundTint="@color/primaryVariant" />
+    </LinearLayout>
+
 </androidx.constraintlayout.widget.ConstraintLayout>

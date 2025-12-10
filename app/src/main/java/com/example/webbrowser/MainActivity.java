@@ -59,6 +59,8 @@ public class MainActivity extends AppCompatActivity implements TabAdapter.TabLis
     private Tab activeTab;
     private boolean desktopModeEnabled = false;
     private boolean incognitoModeEnabled = false;
+    private boolean safeModeEnabled = true;
+    private boolean trackingProtectionEnabled = true;
     private String defaultUserAgent;
     private SharedPreferences preferences;
 
@@ -93,6 +95,9 @@ public class MainActivity extends AppCompatActivity implements TabAdapter.TabLis
         MaterialButton desktopButton = findViewById(R.id.desktopButton);
         MaterialButton incognitoButton = findViewById(R.id.incognitoButton);
         MaterialButton homeButton = findViewById(R.id.homeButton);
+        MaterialButton safetyButton = findViewById(R.id.safetyButton);
+        MaterialButton trackingButton = findViewById(R.id.trackingButton);
+        MaterialButton purgeButton = findViewById(R.id.purgeButton);
 
         tabAdapter = new TabAdapter(tabs, this);
         tabList.setLayoutManager(new LinearLayoutManager(this, RecyclerView.HORIZONTAL, false));
@@ -123,6 +128,9 @@ public class MainActivity extends AppCompatActivity implements TabAdapter.TabLis
         desktopButton.setOnClickListener(v -> toggleDesktopMode((MaterialButton) v));
         incognitoButton.setOnClickListener(v -> toggleIncognitoMode((MaterialButton) v));
         homeButton.setOnClickListener(v -> loadUrl(getString(R.string.default_home)));
+        safetyButton.setOnClickListener(v -> toggleSafeMode((MaterialButton) v));
+        trackingButton.setOnClickListener(v -> toggleTrackingProtection((MaterialButton) v));
+        purgeButton.setOnClickListener(v -> purgeSession());
 
         refreshLayout.setOnRefreshListener(() -> {
             webView.reload();
@@ -149,6 +157,8 @@ public class MainActivity extends AppCompatActivity implements TabAdapter.TabLis
         settings.setLoadWithOverviewMode(true);
         settings.setBuiltInZoomControls(true);
         settings.setDisplayZoomControls(false);
+        settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
+        applyTrackingProtection();
 
         webView.setWebChromeClient(new WebChromeClient() {
             @Override
@@ -166,7 +176,7 @@ public class MainActivity extends AppCompatActivity implements TabAdapter.TabLis
         webView.setWebViewClient(new WebViewClient() {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-                view.loadUrl(request.getUrl().toString());
+                handleNavigationRequest(request.getUrl().toString());
                 return true;
             }
 
@@ -192,9 +202,7 @@ public class MainActivity extends AppCompatActivity implements TabAdapter.TabLis
     }
 
     private void loadUrl(String url) {
-        webView.loadUrl(url);
-        urlInput.setText(url);
-        updateActiveTabUrl(url);
+        handleNavigationRequest(url);
     }
 
     private void createTab(@Nullable String initialUrl) {
@@ -205,7 +213,7 @@ public class MainActivity extends AppCompatActivity implements TabAdapter.TabLis
         activeTab = tab;
         tabAdapter.setSelectedTabId(tab.getId());
         tabAdapter.notifyItemInserted(tabs.size() - 1);
-        loadUrl(url);
+        handleNavigationRequest(url);
         scrollTabsToEnd();
     }
 
@@ -343,6 +351,39 @@ public class MainActivity extends AppCompatActivity implements TabAdapter.TabLis
         }
     }
 
+    private void toggleSafeMode(MaterialButton button) {
+        safeModeEnabled = !safeModeEnabled;
+        button.setText(safeModeEnabled ? R.string.action_safe_on : R.string.action_safe_off);
+        Toast.makeText(this, safeModeEnabled ? R.string.toast_safe_on : R.string.toast_safe_off, Toast.LENGTH_SHORT).show();
+    }
+
+    private void toggleTrackingProtection(MaterialButton button) {
+        trackingProtectionEnabled = !trackingProtectionEnabled;
+        applyTrackingProtection();
+        button.setText(trackingProtectionEnabled ? R.string.action_tracking_on : R.string.action_tracking_off);
+        Toast.makeText(this, trackingProtectionEnabled ? R.string.toast_tracking_on : R.string.toast_tracking_off, Toast.LENGTH_SHORT).show();
+    }
+
+    private void purgeSession() {
+        CookieManager cookieManager = CookieManager.getInstance();
+        cookieManager.removeAllCookies(null);
+        cookieManager.flush();
+        webView.clearHistory();
+        webView.clearCache(true);
+        history.clear();
+        bookmarks.clear();
+        saveCollection(KEY_HISTORY, history);
+        saveCollection(KEY_BOOKMARKS, bookmarks);
+        Toast.makeText(this, R.string.toast_purged, Toast.LENGTH_SHORT).show();
+    }
+
+    private void applyTrackingProtection() {
+        CookieManager cookieManager = CookieManager.getInstance();
+        cookieManager.setAcceptThirdPartyCookies(webView, !trackingProtectionEnabled);
+        cookieManager.setAcceptCookie(true);
+        webView.getSettings().setBlockNetworkLoads(false);
+    }
+
     private void loadPersistedCollections() {
         bookmarks.clear();
         history.clear();
@@ -380,7 +421,7 @@ public class MainActivity extends AppCompatActivity implements TabAdapter.TabLis
     public void onTabSelected(Tab tab) {
         activeTab = tab;
         tabAdapter.setSelectedTabId(tab.getId());
-        loadUrl(tab.getUrl());
+        handleNavigationRequest(tab.getUrl());
     }
 
     @Override
@@ -395,6 +436,66 @@ public class MainActivity extends AppCompatActivity implements TabAdapter.TabLis
         } else {
             super.onBackPressed();
         }
+    }
+
+    private void handleNavigationRequest(String rawInput) {
+        if (TextUtils.isEmpty(rawInput)) {
+            return;
+        }
+        String normalized = normalizeUrl(rawInput.trim());
+        if (safeModeEnabled) {
+            String warning = getSafetyWarning(normalized);
+            if (!TextUtils.isEmpty(warning)) {
+                showUnsafeDialog(normalized, warning);
+                return;
+            }
+        }
+        performNavigation(normalized);
+    }
+
+    private String normalizeUrl(String input) {
+        String url = input;
+        if (!url.startsWith("http")) {
+            url = "https://" + url;
+        }
+        if (safeModeEnabled && url.startsWith("http://")) {
+            url = url.replaceFirst("http://", "https://");
+        }
+        return url;
+    }
+
+    private void performNavigation(String url) {
+        webView.loadUrl(url);
+        urlInput.setText(url);
+        updateActiveTabUrl(url);
+    }
+
+    private void showUnsafeDialog(String url, String reason) {
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.title_security_gate)
+                .setMessage(getString(R.string.message_security_gate, reason))
+                .setPositiveButton(R.string.action_proceed_anyway, (dialog, which) -> performNavigation(url))
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
+    private String getSafetyWarning(String url) {
+        Uri uri = Uri.parse(url);
+        String host = uri.getHost();
+        if (TextUtils.isEmpty(host)) {
+            return getString(R.string.reason_unknown_host);
+        }
+        if (!url.startsWith("https")) {
+            return getString(R.string.reason_unencrypted);
+        }
+        String lowerHost = host.toLowerCase();
+        String[] suspectKeywords = {"phish", "malware", "tracking", "ads"};
+        for (String keyword : suspectKeywords) {
+            if (lowerHost.contains(keyword)) {
+                return getString(R.string.reason_flagged_host, keyword);
+            }
+        }
+        return null;
     }
 
     private static class QuickLink {
