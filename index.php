@@ -1,23 +1,24 @@
 <?php
-// Single-file web hosting platform with SQLite and per-user isolation.
-// Auto-creates database and user folders.
+// MIC Pro: Apple Music-inspired streaming portal powered by SQLite and Audius API.
+// Single-file experience with authentication, playlists, discovery, and immersive UI.
 
 session_start();
 
 const DB_FILE = __DIR__ . '/portal.sqlite';
-const USERS_ROOT = __DIR__ . '/users';
-
-if (!file_exists(USERS_ROOT)) {
-    mkdir(USERS_ROOT, 0775, true);
-}
 
 function init_db(): PDO {
     $isNew = !file_exists(DB_FILE);
     $pdo = new PDO('sqlite:' . DB_FILE);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $pdo->exec('PRAGMA foreign_keys = ON');
     if ($isNew) {
         $pdo->exec('CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE NOT NULL, password_hash TEXT NOT NULL, created_at TEXT NOT NULL)');
         $pdo->exec('CREATE TABLE login_events (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, event_at TEXT NOT NULL, ip TEXT, FOREIGN KEY(user_id) REFERENCES users(id))');
+        $pdo->exec('CREATE TABLE playlists (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, name TEXT NOT NULL, created_at TEXT NOT NULL, FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE)');
+        $pdo->exec('CREATE TABLE playlist_tracks (id INTEGER PRIMARY KEY AUTOINCREMENT, playlist_id INTEGER NOT NULL, track_id TEXT NOT NULL, title TEXT NOT NULL, artist TEXT NOT NULL, artwork TEXT, stream_url TEXT NOT NULL, duration INTEGER DEFAULT 0, added_at TEXT NOT NULL, FOREIGN KEY(playlist_id) REFERENCES playlists(id) ON DELETE CASCADE)');
+    } else {
+        $pdo->exec('CREATE TABLE IF NOT EXISTS playlists (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, name TEXT NOT NULL, created_at TEXT NOT NULL, FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE)');
+        $pdo->exec('CREATE TABLE IF NOT EXISTS playlist_tracks (id INTEGER PRIMARY KEY AUTOINCREMENT, playlist_id INTEGER NOT NULL, track_id TEXT NOT NULL, title TEXT NOT NULL, artist TEXT NOT NULL, artwork TEXT, stream_url TEXT NOT NULL, duration INTEGER DEFAULT 0, added_at TEXT NOT NULL, FOREIGN KEY(playlist_id) REFERENCES playlists(id) ON DELETE CASCADE)');
     }
     return $pdo;
 }
@@ -47,107 +48,6 @@ function current_user(PDO $pdo): ?array {
     return $user ?: null;
 }
 
-function sanitize_relative_path(string $path): string {
-    $clean = str_replace(['..', "\\", chr(0)], '', $path);
-    return ltrim($clean, '/');
-}
-
-function user_root(array $user): string {
-    $safeName = preg_replace('/[^a-zA-Z0-9_-]/', '_', $user['username']);
-    $root = USERS_ROOT . '/' . $user['id'] . '_' . $safeName;
-    if (!file_exists($root)) {
-        mkdir($root, 0775, true);
-    }
-    return $root;
-}
-
-function ensure_path(array $user, string $relative): string {
-    $relative = sanitize_relative_path($relative);
-    $base = realpath(user_root($user));
-    $target = $base . '/' . $relative;
-    $real = realpath($target) ?: $target;
-    if (strpos($real, $base) !== 0) {
-        throw new RuntimeException('Access denied');
-    }
-    return $real;
-}
-
-function list_directory(string $dir): array {
-    $items = array_diff(scandir($dir), ['.', '..']);
-    $files = [];
-    foreach ($items as $item) {
-        $full = $dir . '/' . $item;
-        $files[] = [
-            'name' => $item,
-            'is_dir' => is_dir($full),
-            'size' => is_file($full) ? filesize($full) : 0,
-            'modified' => date('Y-m-d H:i:s', filemtime($full)),
-        ];
-    }
-    usort($files, fn($a, $b) => strcmp($a['is_dir'] ? '0'.$a['name'] : '1'.$a['name'], $b['is_dir'] ? '0'.$b['name'] : '1'.$b['name']));
-    return $files;
-}
-
-function compute_usage(string $dir): array {
-    $size = 0;
-    $files = 0;
-    $folders = 0;
-    $iterator = new RecursiveIteratorIterator(
-        new RecursiveDirectoryIterator($dir, FilesystemIterator::SKIP_DOTS),
-        RecursiveIteratorIterator::SELF_FIRST
-    );
-    foreach ($iterator as $item) {
-        if ($item->isDir()) {
-            $folders++;
-        } else {
-            $files++;
-            $size += $item->getSize();
-        }
-    }
-    return ['bytes' => $size, 'files' => $files, 'folders' => $folders];
-}
-
-function copy_recursive(string $source, string $destination): void {
-    if (is_dir($source)) {
-        if (!file_exists($destination)) {
-            mkdir($destination, 0775, true);
-        }
-        $items = array_diff(scandir($source), ['.', '..']);
-        foreach ($items as $item) {
-            copy_recursive($source . '/' . $item, $destination . '/' . $item);
-        }
-    } else {
-        $dir = dirname($destination);
-        if (!file_exists($dir)) {
-            mkdir($dir, 0775, true);
-        }
-        copy($source, $destination);
-    }
-}
-
-function recursive_zip(string $source, string $zipPath): void {
-    if (!class_exists('ZipArchive')) {
-        throw new RuntimeException('ZipArchive extension is required for backups.');
-    }
-    $zip = new ZipArchive();
-    if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
-        throw new RuntimeException('Unable to create backup');
-    }
-    $source = realpath($source);
-    $sourceLen = strlen($source) + 1;
-    $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($source, FilesystemIterator::SKIP_DOTS));
-    foreach ($iterator as $file) {
-        $path = $file->getPathname();
-        $localName = substr($path, $sourceLen);
-        if ($file->isDir()) {
-            $zip->addEmptyDir($localName);
-        } else {
-            $zip->addFile($path, $localName);
-        }
-    }
-    $zip->close();
-}
-
 function require_login(PDO $pdo): array {
     $user = current_user($pdo);
     if (!$user) {
@@ -157,21 +57,112 @@ function require_login(PDO $pdo): array {
     return $user;
 }
 
+function ensure_default_playlist(PDO $pdo, int $userId): void {
+    $stmt = $pdo->prepare('SELECT id FROM playlists WHERE user_id = :u LIMIT 1');
+    $stmt->execute([':u' => $userId]);
+    if (!$stmt->fetchColumn()) {
+        $pdo->prepare('INSERT INTO playlists (user_id, name, created_at) VALUES (:u, :n, :c)')
+            ->execute([':u' => $userId, ':n' => 'Favorites', ':c' => date('c')]);
+    }
+}
+
+function load_playlists(PDO $pdo, int $userId): array {
+    $stmt = $pdo->prepare('SELECT * FROM playlists WHERE user_id = :u ORDER BY created_at DESC');
+    $stmt->execute([':u' => $userId]);
+    $playlists = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($playlists as &$pl) {
+        $tracks = $pdo->prepare('SELECT * FROM playlist_tracks WHERE playlist_id = :p ORDER BY added_at DESC');
+        $tracks->execute([':p' => $pl['id']]);
+        $pl['tracks'] = $tracks->fetchAll(PDO::FETCH_ASSOC);
+    }
+    return $playlists;
+}
+
+function sanitize(string $value): string {
+    return trim(filter_var($value, FILTER_SANITIZE_STRING, FILTER_FLAG_NO_ENCODE_QUOTES));
+}
+
+function audius_request(string $endpoint, array $params = []): array {
+    $base = 'https://api.audius.co/v1';
+    $params['app_name'] = 'mic-pro';
+    $query = http_build_query($params);
+    $url = rtrim($base, '/') . '/' . ltrim($endpoint, '/') . '?' . $query;
+    $context = stream_context_create([
+        'http' => ['timeout' => 6, 'ignore_errors' => true],
+        'https' => ['timeout' => 6, 'ignore_errors' => true],
+    ]);
+    $raw = @file_get_contents($url, false, $context);
+    if ($raw === false) {
+        return [];
+    }
+    $decoded = json_decode($raw, true);
+    if (!isset($decoded['data'])) {
+        return [];
+    }
+    $tracks = [];
+    foreach ($decoded['data'] as $t) {
+        $art = $t['artwork']['150x150'] ?? $t['artwork']['480x480'] ?? '';
+        $tracks[] = [
+            'track_id' => $t['id'] ?? uniqid('audius_', true),
+            'title' => $t['title'] ?? 'Unknown Title',
+            'artist' => $t['user']['name'] ?? $t['user']['handle'] ?? 'Unknown Artist',
+            'artwork' => $art,
+            'duration' => (int)($t['duration'] ?? 0),
+            'stream_url' => ($t['stream_url'] ?? '') . '?app_name=mic-pro',
+        ];
+    }
+    return $tracks;
+}
+
+function sample_fallback_tracks(): array {
+    return [
+        ['track_id' => 'sample-helix-1', 'title' => 'SoundHelix Suite No.1', 'artist' => 'SoundHelix', 'artwork' => 'https://images.unsplash.com/photo-1511379938547-c1f69419868d?auto=format&fit=crop&w=480&q=80', 'duration' => 393, 'stream_url' => 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3'],
+        ['track_id' => 'sample-helix-2', 'title' => 'SoundHelix Suite No.2', 'artist' => 'SoundHelix', 'artwork' => 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=480&q=80', 'duration' => 370, 'stream_url' => 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3'],
+        ['track_id' => 'sample-helix-3', 'title' => 'SoundHelix Suite No.3', 'artist' => 'SoundHelix', 'artwork' => 'https://images.unsplash.com/photo-1507838153414-b4b713384a76?auto=format&fit=crop&w=480&q=80', 'duration' => 405, 'stream_url' => 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3'],
+    ];
+}
+
+function hero_tracks(): array {
+    $tracks = audius_request('tracks/trending', ['limit' => 8]);
+    if (empty($tracks)) {
+        $tracks = sample_fallback_tracks();
+    }
+    return array_slice($tracks, 0, 8);
+}
+
+// API proxy for front-end fetches.
+if (isset($_GET['api'])) {
+    header('Content-Type: application/json');
+    $type = $_GET['api'];
+    if ($type === 'trending') {
+        $tracks = audius_request('tracks/trending', ['limit' => 24]);
+        if (empty($tracks)) { $tracks = sample_fallback_tracks(); }
+        echo json_encode(['tracks' => $tracks]);
+    } elseif ($type === 'search') {
+        $q = sanitize($_GET['q'] ?? '');
+        $tracks = $q ? audius_request('tracks/search', ['query' => $q, 'limit' => 18]) : [];
+        echo json_encode(['tracks' => $tracks]);
+    } else {
+        echo json_encode(['tracks' => sample_fallback_tracks()]);
+    }
+    exit;
+}
+
 $action = $_POST['action'] ?? null;
 
 if ($action === 'register') {
-    $username = trim($_POST['username'] ?? '');
+    $username = sanitize($_POST['username'] ?? '');
     $password = $_POST['password'] ?? '';
     if ($username === '' || $password === '') {
         flash('error', 'Username and password are required.');
     } else {
         $hash = password_hash($password, PASSWORD_DEFAULT);
         try {
-            $stmt = $pdo->prepare('INSERT INTO users (username, password_hash, created_at) VALUES (:u, :p, :c)');
-            $stmt->execute([':u' => $username, ':p' => $hash, ':c' => date('c')]);
+            $pdo->prepare('INSERT INTO users (username, password_hash, created_at) VALUES (:u, :p, :c)')
+                ->execute([':u' => $username, ':p' => $hash, ':c' => date('c')]);
             $userId = (int)$pdo->lastInsertId();
-            mkdir(user_root(['id' => $userId, 'username' => $username]), 0775, true);
-            flash('success', 'Account created. You can log in now.');
+            ensure_default_playlist($pdo, $userId);
+            flash('success', 'Account created. Sign in to start listening.');
         } catch (PDOException $e) {
             flash('error', 'Username already exists.');
         }
@@ -181,13 +172,14 @@ if ($action === 'register') {
 }
 
 if ($action === 'login') {
-    $username = trim($_POST['username'] ?? '');
+    $username = sanitize($_POST['username'] ?? '');
     $password = $_POST['password'] ?? '';
     $stmt = $pdo->prepare('SELECT * FROM users WHERE username = :u');
     $stmt->execute([':u' => $username]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
     if ($user && password_verify($password, $user['password_hash'])) {
         $_SESSION['user_id'] = $user['id'];
+        ensure_default_playlist($pdo, (int)$user['id']);
         $pdo->prepare('INSERT INTO login_events (user_id, event_at, ip) VALUES (:u, :t, :ip)')
             ->execute([':u' => $user['id'], ':t' => date('c'), ':ip' => $_SERVER['REMOTE_ADDR'] ?? 'cli']);
         flash('success', 'Welcome back, ' . htmlspecialchars($user['username']) . '!');
@@ -204,136 +196,56 @@ if ($action === 'logout') {
     exit;
 }
 
-if ($action && in_array($action, ['create_folder','upload_file','save_file','delete_path','create_backup','rename_path','clone_path','generate_template','restore_backup'], true)) {
+if ($action && in_array($action, ['create_playlist', 'delete_playlist', 'save_track', 'remove_track'], true)) {
     $user = require_login($pdo);
-    $root = user_root($user);
     try {
         switch ($action) {
-            case 'create_folder':
-                $folder = sanitize_relative_path($_POST['folder'] ?? '');
-                if ($folder === '') {
-                    throw new RuntimeException('Folder name required.');
-                }
-                $path = ensure_path($user, $folder);
-                if (!file_exists($path)) {
-                    mkdir($path, 0775, true);
-                }
-                flash('success', 'Folder created.');
+            case 'create_playlist':
+                $name = sanitize($_POST['name'] ?? '');
+                if ($name === '') { throw new RuntimeException('Playlist name required.'); }
+                $pdo->prepare('INSERT INTO playlists (user_id, name, created_at) VALUES (:u, :n, :c)')
+                    ->execute([':u' => $user['id'], ':n' => $name, ':c' => date('c')]);
+                flash('success', 'Playlist "' . htmlspecialchars($name) . '" created.');
                 break;
-            case 'upload_file':
-                $targetFolder = sanitize_relative_path($_POST['target_folder'] ?? '');
-                $destDir = ensure_path($user, $targetFolder === '' ? '.' : $targetFolder);
-                if (!is_dir($destDir)) {
-                    throw new RuntimeException('Invalid target directory.');
-                }
-                if (!empty($_FILES['upload']['name'])) {
-                    $name = basename(sanitize_relative_path($_FILES['upload']['name']));
-                    $dest = $destDir . '/' . $name;
-                    move_uploaded_file($_FILES['upload']['tmp_name'], $dest);
-                    flash('success', 'File uploaded.');
-                } else {
-                    throw new RuntimeException('No file selected.');
-                }
+            case 'delete_playlist':
+                $pid = (int)($_POST['playlist_id'] ?? 0);
+                if ($pid <= 0) { throw new RuntimeException('Invalid playlist.'); }
+                $owned = $pdo->prepare('SELECT id FROM playlists WHERE id = :p AND user_id = :u');
+                $owned->execute([':p' => $pid, ':u' => $user['id']]);
+                if (!$owned->fetchColumn()) { throw new RuntimeException('Not allowed.'); }
+                $pdo->prepare('DELETE FROM playlists WHERE id = :p')->execute([':p' => $pid]);
+                flash('success', 'Playlist removed.');
                 break;
-            case 'save_file':
-                $path = sanitize_relative_path($_POST['path'] ?? '');
-                $content = $_POST['content'] ?? '';
-                $real = ensure_path($user, $path);
-                $dir = dirname($real);
-                if (!file_exists($dir)) {
-                    mkdir($dir, 0775, true);
+            case 'save_track':
+                $pid = (int)($_POST['playlist_id'] ?? 0);
+                $trackId = sanitize($_POST['track_id'] ?? '');
+                $title = sanitize($_POST['title'] ?? '');
+                $artist = sanitize($_POST['artist'] ?? '');
+                $artwork = sanitize($_POST['artwork'] ?? '');
+                $stream = filter_var($_POST['stream_url'] ?? '', FILTER_SANITIZE_URL);
+                $duration = (int)($_POST['duration'] ?? 0);
+                if ($pid <= 0 || $trackId === '' || $title === '' || $artist === '' || $stream === '') {
+                    throw new RuntimeException('Incomplete track details.');
                 }
-                file_put_contents($real, $content);
-                flash('success', 'File saved.');
+                $owned = $pdo->prepare('SELECT id FROM playlists WHERE id = :p AND user_id = :u');
+                $owned->execute([':p' => $pid, ':u' => $user['id']]);
+                if (!$owned->fetchColumn()) { throw new RuntimeException('Not allowed.'); }
+                $pdo->prepare('INSERT INTO playlist_tracks (playlist_id, track_id, title, artist, artwork, stream_url, duration, added_at) VALUES (:p,:t,:tt,:a,:aw,:s,:d,:c)')
+                    ->execute([':p' => $pid, ':t' => $trackId, ':tt' => $title, ':a' => $artist, ':aw' => $artwork, ':s' => $stream, ':d' => $duration, ':c' => date('c')]);
+                flash('success', 'Added "' . htmlspecialchars($title) . '" to your playlist.');
                 break;
-            case 'delete_path':
-                $path = sanitize_relative_path($_POST['path'] ?? '');
-                $real = ensure_path($user, $path);
-                if (is_dir($real)) {
-                    $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($real, FilesystemIterator::SKIP_DOTS), RecursiveIteratorIterator::CHILD_FIRST);
-                    foreach ($iterator as $file) {
-                        $file->isDir() ? rmdir($file) : unlink($file);
-                    }
-                    rmdir($real);
-                } elseif (is_file($real)) {
-                    unlink($real);
-                }
-                flash('success', 'Deleted.');
-                break;
-            case 'create_backup':
-                $backupDir = $root . '/backups';
-                if (!file_exists($backupDir)) {
-                    mkdir($backupDir, 0775, true);
-                }
-                $backupFile = $backupDir . '/backup_' . date('Ymd_His') . '.zip';
-                recursive_zip($root, $backupFile);
-                flash('success', 'Backup created: ' . basename($backupFile));
-                break;
-            case 'rename_path':
-                $path = sanitize_relative_path($_POST['path'] ?? '');
-                $newName = sanitize_relative_path($_POST['new_name'] ?? '');
-                if ($path === '' || $newName === '') {
-                    throw new RuntimeException('Path and new name are required.');
-                }
-                $real = ensure_path($user, $path);
-                $dest = dirname($real) . '/' . $newName;
-                if (file_exists($dest)) {
-                    throw new RuntimeException('Destination already exists.');
-                }
-                rename($real, $dest);
-                flash('success', 'Renamed successfully.');
-                break;
-            case 'clone_path':
-                $path = sanitize_relative_path($_POST['path'] ?? '');
-                $copyName = sanitize_relative_path($_POST['copy_name'] ?? '');
-                if ($path === '' || $copyName === '') {
-                    throw new RuntimeException('Path and clone name required.');
-                }
-                $real = ensure_path($user, $path);
-                $dest = dirname($real) . '/' . $copyName;
-                if (file_exists($dest)) {
-                    throw new RuntimeException('Clone target exists.');
-                }
-                copy_recursive($real, $dest);
-                flash('success', 'Cloned into ' . htmlspecialchars($copyName));
-                break;
-            case 'generate_template':
-                $targetFolder = sanitize_relative_path($_POST['target_folder'] ?? 'public_html');
-                $dest = ensure_path($user, $targetFolder);
-                if (!file_exists($dest)) {
-                    mkdir($dest, 0775, true);
-                }
-                $html = "<!doctype html><html><head><meta charset='utf-8'><title>MIC Site</title><link rel='stylesheet' href='style.css'></head><body><main><h1>Welcome to your MIC site</h1><p>Launchpad ready.</p><div id='stats'></div><script src='app.js'></script></main></body></html>";
-                $css = "body{font-family:system-ui;background:#050915;color:#e9ecf6;margin:0;display:grid;place-items:center;min-height:100vh;}main{padding:30px;border-radius:16px;background:linear-gradient(135deg,#0f172a,#0b1222);box-shadow:0 20px 80px rgba(0,0,0,0.5);}h1{letter-spacing:0.08em;}";
-                $js = "fetch('stats.json').then(r=>r.json()).then(d=>{document.querySelector('#stats').innerHTML='<strong>Stats:</strong> '+JSON.stringify(d)}).catch(()=>{});";
-                file_put_contents($dest . '/index.html', $html);
-                file_put_contents($dest . '/style.css', $css);
-                file_put_contents($dest . '/app.js', $js);
-                file_put_contents($dest . '/stats.json', json_encode(['generated' => date('c'), 'user' => $user['username']]));
-                flash('success', 'Starter template generated in ' . $targetFolder);
-                break;
-            case 'restore_backup':
-                $backupName = sanitize_relative_path($_POST['backup_file'] ?? '');
-                if ($backupName === '') {
-                    throw new RuntimeException('Select a backup to restore.');
-                }
-                $backupDir = $root . '/backups';
-                $backupPath = ensure_path($user, 'backups/' . $backupName);
-                if (!file_exists($backupPath)) {
-                    throw new RuntimeException('Backup not found.');
-                }
-                if (!class_exists('ZipArchive')) {
-                    throw new RuntimeException('ZipArchive extension is required to restore.');
-                }
-                $restoreTarget = $root . '/restore_' . date('Ymd_His');
-                mkdir($restoreTarget, 0775, true);
-                $zip = new ZipArchive();
-                if ($zip->open($backupPath) !== true) {
-                    throw new RuntimeException('Unable to open backup.');
-                }
-                $zip->extractTo($restoreTarget);
-                $zip->close();
-                flash('success', 'Backup restored to ' . basename($restoreTarget));
+            case 'remove_track':
+                $tid = (int)($_POST['track_row'] ?? 0);
+                if ($tid <= 0) { throw new RuntimeException('Invalid track reference.'); }
+                $playlistCheck = $pdo->prepare('SELECT playlist_id FROM playlist_tracks WHERE id = :id');
+                $playlistCheck->execute([':id' => $tid]);
+                $plid = (int)($playlistCheck->fetchColumn() ?: 0);
+                if ($plid === 0) { throw new RuntimeException('Track not found.'); }
+                $owned = $pdo->prepare('SELECT id FROM playlists WHERE id = :p AND user_id = :u');
+                $owned->execute([':p' => $plid, ':u' => $user['id']]);
+                if (!$owned->fetchColumn()) { throw new RuntimeException('Not allowed.'); }
+                $pdo->prepare('DELETE FROM playlist_tracks WHERE id = :id')->execute([':id' => $tid]);
+                flash('success', 'Track removed.');
                 break;
         }
     } catch (Throwable $e) {
@@ -344,456 +256,424 @@ if ($action && in_array($action, ['create_folder','upload_file','save_file','del
 }
 
 $user = current_user($pdo);
-$files = $user ? list_directory(user_root($user)) : [];
-$backups = [];
-$usage = null;
+$playlists = $user ? load_playlists($pdo, (int)$user['id']) : [];
 $loginEvents = [];
 if ($user) {
-    $backupDir = user_root($user) . '/backups';
-    if (file_exists($backupDir)) {
-        $backups = list_directory($backupDir);
-    }
-    $usage = compute_usage(user_root($user));
-    $stmt = $pdo->prepare('SELECT * FROM login_events WHERE user_id = :u ORDER BY event_at DESC LIMIT 10');
+    $stmt = $pdo->prepare('SELECT * FROM login_events WHERE user_id = :u ORDER BY event_at DESC LIMIT 6');
     $stmt->execute([':u' => $user['id']]);
     $loginEvents = $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
-
-function card(string $title, string $body, string $accent): string {
-    return "<div class='card' style='--accent: {$accent};'><header><span>{$title}</span></header><div class='card-body'>{$body}</div></div>";
-}
+$hero = hero_tracks();
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MIC Hosting Control</title>
+    <title>MIC Pro · Music Intelligence Cloud</title>
     <style>
         :root {
-            --bg: #f0f2f5;
-            --panel: #ffffff;
-            --muted: #6c7781;
-            --accent: #0073aa;
-            --accent-2: #00a0d2;
-            --accent-3: #46b450;
-            --danger: #d63638;
-            --success: #46b450;
-            --sidebar: #23282d;
-            --border: #dcdcde;
-            --text: #1d2327;
+            --bg: #050507;
+            --panel: #0c0d11;
+            --glass: rgba(255,255,255,0.04);
+            --glass-2: rgba(255,255,255,0.08);
+            --muted: #9aa0ad;
+            --accent: #ff375f;
+            --accent-2: #7b61ff;
+            --accent-3: #00e7ff;
+            --text: #f8f9fc;
+            --shadow: 0 20px 60px rgba(0,0,0,0.4);
+            --radius: 16px;
         }
         * { box-sizing: border-box; }
         body {
-            margin: 0;
-            font-family: 'Open Sans', 'Segoe UI', Tahoma, sans-serif;
-            background: var(--bg);
+            margin: 0; padding: 0;
+            font-family: 'SF Pro Display', 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: radial-gradient(circle at 20% 20%, rgba(255,55,95,0.08), transparent 26%),
+                        radial-gradient(circle at 80% 10%, rgba(0,231,255,0.08), transparent 24%),
+                        linear-gradient(180deg, #040308, #080a12 60%, #050507);
             color: var(--text);
             min-height: 100vh;
         }
+        a { color: var(--text); text-decoration: none; }
         header.top {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
+            position: sticky; top: 0; z-index: 10;
+            backdrop-filter: blur(12px);
+            background: rgba(5,5,7,0.8);
+            border-bottom: 1px solid rgba(255,255,255,0.06);
             padding: 14px 24px;
-            position: sticky;
-            top: 0;
-            z-index: 10;
-            background: #1d2327;
-            color: #f7f7f7;
-            border-bottom: 1px solid #111;
+            display: flex; align-items: center; gap: 16px;
         }
-        header.top h1 {
-            margin: 0;
-            font-size: 1.2rem;
-            letter-spacing: 0.04em;
-            text-transform: uppercase;
-        }
-        .pill {
-            padding: 6px 12px;
-            border-radius: 4px;
-            border: 1px solid rgba(255,255,255,0.25);
-            background: rgba(255,255,255,0.1);
-            color: #f7f7f7;
-            font-size: 0.85rem;
-        }
-        .layout {
-            display: grid;
-            grid-template-columns: 240px 1fr;
-            gap: 18px;
-            padding: 18px 22px 40px;
-        }
-        aside {
-            background: var(--sidebar);
-            border: 1px solid #000;
-            border-radius: 6px;
-            padding: 10px 0;
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-            color: #c3c4c7;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.35);
-        }
-        .nav-item {
-            padding: 10px 16px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            color: #f7f7f7;
-            border-left: 3px solid transparent;
-            transition: background 0.15s ease, border-color 0.15s ease;
-            font-weight: 600;
-            text-decoration: none;
-        }
-        .nav-item:hover { background: #191e23; border-color: var(--accent); }
-        main { display: flex; flex-direction: column; gap: 18px; }
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-            gap: 18px;
-        }
-        .card {
-            background: var(--panel);
-            border: 1px solid var(--border);
-            border-radius: 4px;
-            padding: 0;
-            box-shadow: 0 1px 1px rgba(0,0,0,0.04);
-            overflow: hidden;
-            position: relative;
-        }
-        .card::before { display: none; }
-        .card header {
-            padding: 12px 14px;
-            font-weight: 700;
-            text-transform: none;
-            font-size: 0.95rem;
-            background: #f6f7f7;
-            border-bottom: 1px solid var(--border);
-            color: #1d2327;
-        }
-        .card-body { padding: 14px; display: grid; gap: 12px; }
+        header.top h1 { margin: 0; font-size: 1.1rem; letter-spacing: 0.08em; text-transform: uppercase; }
+        .tag { padding: 6px 12px; border-radius: 999px; background: linear-gradient(120deg, var(--accent), var(--accent-2)); font-weight: 700; font-size: 0.85rem; box-shadow: var(--shadow); }
+        .layout { display: grid; grid-template-columns: 280px 1fr 360px; gap: 18px; padding: 18px; }
+        aside.left, aside.right { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: var(--radius); padding: 16px; box-shadow: var(--shadow); backdrop-filter: blur(8px); }
+        main { display: grid; gap: 18px; }
+        .section { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: var(--radius); padding: 18px; box-shadow: var(--shadow); }
+        .section header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+        .section h2 { margin: 0; font-size: 1.1rem; letter-spacing: 0.02em; }
+        .muted { color: var(--muted); }
+        .hero-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px,1fr)); gap: 14px; }
+        .hero-card { position: relative; border-radius: var(--radius); overflow: hidden; background: linear-gradient(135deg, rgba(123,97,255,0.3), rgba(0,231,255,0.2)); padding: 14px; min-height: 200px; display: flex; flex-direction: column; justify-content: space-between; box-shadow: var(--shadow); }
+        .hero-card img { width: 100%; height: 120px; object-fit: cover; border-radius: 12px; }
+        .hero-card button { margin-top: 10px; }
+        button, input, select { border-radius: 12px; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.06); color: var(--text); padding: 10px 12px; font-weight: 600; letter-spacing: 0.01em; }
+        button { cursor: pointer; background: linear-gradient(120deg, var(--accent), var(--accent-2)); border: none; box-shadow: var(--shadow); }
+        button.ghost { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.14); box-shadow: none; }
         form { display: grid; gap: 10px; }
-        input, textarea, select, button {
-            border-radius: 3px;
-            border: 1px solid var(--border);
-            padding: 8px 10px;
-            background: #fff;
-            color: var(--text);
-            font-size: 0.97rem;
-            outline: none;
-        }
-        textarea { resize: vertical; min-height: 120px; font-family: 'Fira Code', monospace; background: #fbfbfb; }
-        button {
-            cursor: pointer;
-            background: linear-gradient(180deg, var(--accent-2), var(--accent));
-            border: 1px solid #005177;
-            color: #fff;
-            font-weight: 700;
-            transition: filter 0.1s ease;
-        }
-        button:hover { filter: brightness(1.05); }
-        .danger { background: linear-gradient(180deg, #e35b5b, #c23b3b); border-color: #9b1c1c; }
-        .muted { color: var(--muted); font-size: 0.9rem; }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { padding: 10px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: top; }
-        th { color: var(--muted); font-size: 0.85rem; letter-spacing: 0.01em; text-transform: uppercase; }
-        .flex { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-        .badge { padding: 6px 10px; border-radius: 3px; background: #e9f5ff; color: var(--accent); font-weight: 700; font-size: 0.85rem; border: 1px solid #c0d9f0; text-decoration: none; display: inline-block; }
+        .stack { display: grid; gap: 10px; }
         .pill-row { display: flex; gap: 8px; flex-wrap: wrap; }
-        .status-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--success); box-shadow: 0 0 8px var(--success); }
-        .dual { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-        .progress { height: 8px; background: #edeff0; border-radius: 999px; overflow: hidden; position: relative; }
-        .progress span { display: block; height: 100%; background: linear-gradient(90deg,var(--accent),var(--accent-2)); }
-        .stat-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(160px,1fr)); gap: 10px; }
-        .stat { padding: 12px; border-radius: 4px; background: #f6f7f7; border: 1px solid var(--border); }
-        .timeline { display: grid; gap: 8px; }
-        .timeline-item { padding: 10px; border-radius: 4px; background: #fff; border: 1px solid var(--border); }
-        .timeline strong { color: #111; }
-        details summary { cursor: pointer; }
-        details { border: 1px dashed var(--border); padding: 12px; border-radius: 4px; background: #fdfdfd; }
-        .plugin-row { border: 1px solid var(--border); border-radius: 4px; margin-bottom: 12px; background: #fff; box-shadow: 0 1px 1px rgba(0,0,0,0.04); }
-        .plugin-row header { background: #f6f7f7; border-bottom: 1px solid var(--border); padding: 12px; font-weight: 700; color: #111; display: flex; align-items: center; justify-content: space-between; }
-        .plugin-row .plugin-body { padding: 12px; display: grid; gap: 10px; }
-        .plugin-row footer { padding: 12px; border-top: 1px solid var(--border); background: #fbfbfb; display: flex; gap: 10px; flex-wrap: wrap; }
-        @media (max-width: 900px) {
-            .layout { grid-template-columns: 1fr; }
-            header.top { position: sticky; }
-        }
+        .badge { padding: 6px 10px; border-radius: 10px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.14); font-weight: 600; font-size: 0.85rem; }
+        .playlist-card { border: 1px solid rgba(255,255,255,0.06); border-radius: var(--radius); padding: 14px; background: rgba(255,255,255,0.03); box-shadow: var(--shadow); display: grid; gap: 12px; }
+        .playlist-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { border-bottom: 1px solid rgba(255,255,255,0.08); padding: 8px 6px; text-align: left; }
+        .track-row { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; padding: 10px; border-radius: 12px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06); }
+        .avatar { width: 48px; height: 48px; border-radius: 12px; object-fit: cover; background: #111; }
+        .queue { display: grid; gap: 12px; }
+        .queue .track-row { grid-template-columns: auto 1fr auto; }
+        .player { position: sticky; bottom: 18px; border-radius: var(--radius); background: linear-gradient(120deg, rgba(255,55,95,0.22), rgba(123,97,255,0.26)); padding: 14px; box-shadow: var(--shadow); display: grid; gap: 10px; }
+        .timeline { width: 100%; height: 8px; border-radius: 999px; background: rgba(255,255,255,0.16); overflow: hidden; }
+        .timeline span { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent-2)); width: 0%; }
+        .flex { display: flex; align-items: center; gap: 10px; }
+        .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .search-bar { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+        .flash { padding: 10px 12px; border-radius: 12px; background: rgba(0,255,140,0.12); border: 1px solid rgba(0,255,140,0.3); color: #caffd7; }
+        .flash.error { background: rgba(255,55,95,0.12); border-color: rgba(255,55,95,0.4); color: #ffd8e3; }
+        @media(max-width: 1100px) { .layout { grid-template-columns: 1fr; } aside.right { order: 3; } }
     </style>
 </head>
 <body>
 <header class="top">
-    <h1>MIC Hosting</h1>
-    <div class="pill">
-        <span class="status-dot"></span>
-        <strong>SQLite Core</strong> · Secure file sandboxes
+    <div class="tag">MIC Pro</div>
+    <h1>Music Intelligence Cloud · Apple Music-inspired immersion</h1>
+    <div style="margin-left:auto;" class="pill-row">
+        <span class="badge">Audius full-track API</span>
+        <span class="badge">Spatial dashboard</span>
     </div>
-    <?php if ($user): ?>
-    <form method="post" style="margin:0;">
-        <input type="hidden" name="action" value="logout">
-        <button class="danger">Logout <?php echo htmlspecialchars($user['username']); ?></button>
-    </form>
-    <?php endif; ?>
 </header>
-
 <div class="layout">
-    <aside>
-        <div class="nav-item"><span>Dashboard</span><span class="badge">Live</span></div>
-        <div class="nav-item"><span>File Manager</span><span class="badge" style="color:var(--accent-2);background:rgba(143,124,255,0.15);">Grid</span></div>
-        <div class="nav-item"><span>Backups</span><span class="badge" style="color:var(--accent-3);background:rgba(255,209,102,0.18);">Auto</span></div>
-        <div class="nav-item"><span>Users</span><span class="badge" style="background:rgba(255,255,255,0.12);color:#fff;">Isolated</span></div>
-        <div class="nav-item"><span>Security</span><span class="badge" style="background:rgba(92,226,154,0.1);color:var(--success);">Lock</span></div>
-        <?php if (!$user): ?>
-            <div class="muted">Create an account to get your personal sandboxed hosting space.</div>
-        <?php else: ?>
-            <div class="muted">Root: <?php echo htmlspecialchars(user_root($user)); ?></div>
-        <?php endif; ?>
+    <aside class="left">
+        <div class="stack">
+            <div style="font-weight:700; font-size:1.05rem;">Control Desk</div>
+            <?php if (!$user): ?>
+                <form method="post">
+                    <input type="hidden" name="action" value="login">
+                    <input name="username" placeholder="Username" required>
+                    <input type="password" name="password" placeholder="Password" required>
+                    <button>Login</button>
+                </form>
+                <details>
+                    <summary class="muted">Create account</summary>
+                    <form method="post">
+                        <input type="hidden" name="action" value="register">
+                        <input name="username" placeholder="Username" required>
+                        <input type="password" name="password" placeholder="Password" required>
+                        <button class="ghost">Register</button>
+                    </form>
+                </details>
+            <?php else: ?>
+                <div class="pill-row">
+                    <span class="badge">Hi, <?php echo htmlspecialchars($user['username']); ?></span>
+                    <span class="badge">Since <?php echo htmlspecialchars(substr($user['created_at'],0,10)); ?></span>
+                </div>
+                <form method="post">
+                    <input type="hidden" name="action" value="logout">
+                    <button class="ghost">Log out</button>
+                </form>
+                <div class="section" style="padding:12px;">
+                    <header style="margin-bottom:6px;"><h2 style="font-size:0.95rem;">New Playlist</h2></header>
+                    <form method="post">
+                        <input type="hidden" name="action" value="create_playlist">
+                        <input name="name" placeholder="Midnight Drive" required>
+                        <button>Create</button>
+                    </form>
+                </div>
+                <div class="section" style="padding:12px;">
+                    <header style="margin-bottom:6px;"><h2 style="font-size:0.95rem;">Recent logins</h2></header>
+                    <div class="stack">
+                        <?php if (empty($loginEvents)): ?>
+                            <div class="muted">No activity yet.</div>
+                        <?php else: ?>
+                            <?php foreach ($loginEvents as $event): ?>
+                                <div class="badge"><?php echo htmlspecialchars($event['event_at']); ?> · <?php echo htmlspecialchars($event['ip'] ?? 'n/a'); ?></div>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            <?php endif; ?>
+            <?php if ($msg = flash('success')): ?><div class="flash"><?php echo $msg; ?></div><?php endif; ?>
+            <?php if ($msg = flash('error')): ?><div class="flash error"><?php echo $msg; ?></div><?php endif; ?>
+        </div>
     </aside>
     <main>
-        <?php if ($msg = flash('error')): ?>
-            <div class="card" style="border-color: rgba(255,107,107,0.4);">
-                <header>Error</header>
-                <div class="card-body" style="color: var(--danger); font-weight:700;">⚠️ <?php echo htmlspecialchars($msg); ?></div>
-            </div>
-        <?php endif; ?>
-        <?php if ($msg = flash('success')): ?>
-            <div class="card" style="border-color: rgba(92,226,154,0.4);">
-                <header>Success</header>
-                <div class="card-body" style="color: var(--success); font-weight:700;">✅ <?php echo htmlspecialchars($msg); ?></div>
-            </div>
-        <?php endif; ?>
-
-        <?php if (!$user): ?>
-            <div class="grid">
-                <?php echo card('Create Account', '<form method="post"><input type="hidden" name="action" value="register"><input name="username" placeholder="Username" required><input type="password" name="password" placeholder="Password" required><button>Create Sandbox</button></form>', '#5ef0ff'); ?>
-                <?php echo card('Login', '<form method="post"><input type="hidden" name="action" value="login"><input name="username" placeholder="Username" required><input type="password" name="password" placeholder="Password" required><button>Enter Portal</button></form>', '#8f7cff'); ?>
-                <?php echo card('Platform Features',
-                    '<ul style="margin:0 0 0 18px; color:var(--muted); display:grid; gap:6px;">'
-                    .'<li>Isolated user directories with lock-in safeguards</li>'
-                    .'<li>File manager with upload, edit, delete, and folder creation</li>'
-                    .'<li>Instant SQLite provisioning and activity audit log</li>'
-                    .'<li>One-click backup generator per account</li>'
-                    .'<li>Dashboard metrics and dual-pane actions</li>'
-                    .'</ul>',
-                    '#ffd166'); ?>
-            </div>
-        <?php else: ?>
-            <div class="grid">
-                <div class="card">
-                    <header>Dashboard</header>
-                    <div class="card-body">
-                        <div class="dual">
-                            <div>
-                                <div class="muted">Welcome back</div>
-                                <h2 style="margin:6px 0;">Commander <?php echo htmlspecialchars($user['username']); ?></h2>
-                                <div class="pill-row">
-                                    <div class="badge">Created: <?php echo htmlspecialchars($user['created_at']); ?></div>
-                                    <div class="badge" style="color:var(--success);background:rgba(92,226,154,0.12);">Files: <?php echo count($files); ?></div>
-                                </div>
-                            </div>
-                            <div>
-                                <form method="post" class="dual" enctype="multipart/form-data">
-                                    <input type="hidden" name="action" value="create_folder">
-                                    <input name="folder" placeholder="Create folder e.g. public_html" required>
-                                    <button>Create</button>
-                                </form>
-                                <form method="post" class="dual" enctype="multipart/form-data">
-                                    <input type="hidden" name="action" value="upload_file">
-                                    <input name="target_folder" placeholder="Target folder (optional)">
-                                    <input type="file" name="upload" required>
-                                    <button>Upload</button>
-                                </form>
-                            </div>
-                        </div>
-                        <div style="display:grid; grid-template-columns: repeat(auto-fit,minmax(140px,1fr)); gap:8px;">
-                            <div class="card" style="padding:12px;">
-                                <header style="background:none;border:none;padding:0 0 6px 0;">Quota</header>
-                                <div class="card-body" style="padding:0;">
-                                    <div class="muted">Storage used</div>
-                                    <?php $usedPct = $usage ? min(100, round(($usage['bytes'] / (1024*1024*50)) * 100, 1)) : 0; ?>
-                                    <div class="progress"><span style="width: <?php echo $usedPct; ?>%"></span></div>
-                                    <div style="font-size:0.85rem; color:var(--muted); margin-top:4px;">~<?php echo number_format($usage['bytes']/1024/1024,2); ?> MB used of 50 MB soft cap</div>
-                                </div>
-                            </div>
-                            <div class="card" style="padding:12px;">
-                                <header style="background:none;border:none;padding:0 0 6px 0;">Activity</header>
-                                <div class="card-body" style="padding:0;">
-                                    <div class="muted">Login entries and file edits are captured for auditing inside SQLite.</div>
-                                    <div class="muted">Last login: <?php echo $loginEvents ? htmlspecialchars($loginEvents[0]['event_at']) : '—'; ?></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+        <div class="section">
+            <header>
+                <div>
+                    <div class="muted" style="letter-spacing:0.08em; text-transform:uppercase; font-size:0.8rem;">Immersive listening</div>
+                    <h2>Galaxy hero picks</h2>
                 </div>
-                <div class="card">
-                    <header>Operations Lab</header>
-                    <div class="card-body">
-                        <div class="dual">
-                            <form method="post">
-                                <input type="hidden" name="action" value="rename_path">
-                                <input name="path" placeholder="Path to rename" required>
-                                <input name="new_name" placeholder="New name" required>
-                                <button>Rename</button>
-                            </form>
-                            <form method="post">
-                                <input type="hidden" name="action" value="clone_path">
-                                <input name="path" placeholder="Path to clone" required>
-                                <input name="copy_name" placeholder="Clone as" required>
-                                <button>Duplicate</button>
-                            </form>
-                        </div>
-                        <details>
-                            <summary class="badge" style="cursor:pointer;">Generate starter template</summary>
-                            <form method="post">
-                                <input type="hidden" name="action" value="generate_template">
-                                <input name="target_folder" placeholder="public_html or apps/demo">
-                                <button>Provision Demo Site</button>
-                            </form>
-                        </details>
-                        <div class="muted">Automations extend your sandbox with instant scaffolding and controlled clones without leaving MIC Hosting.</div>
-                    </div>
+                <div class="pill-row">
+                    <span class="badge">Spatial gradient UI</span>
+                    <span class="badge">Play + Queue + Save</span>
                 </div>
-                <div class="card">
-                    <header>File Manager</header>
-                    <div class="card-body">
-                        <?php foreach ($files as $f): ?>
-                            <div class="plugin-row">
-                                <header>
-                                    <div>
-                                        <div style="font-weight:700;"><?php echo htmlspecialchars($f['name']); ?></div>
-                                        <div class="muted"><?php echo $f['is_dir'] ? 'Directory' : 'File'; ?> · <?php echo $f['is_dir'] ? '—' : number_format($f['size']/1024,2).' KB'; ?> · <?php echo htmlspecialchars($f['modified']); ?></div>
-                                    </div>
-                                    <div class="pill-row">
-                                        <span class="badge"><?php echo $f['is_dir'] ? 'Folder' : 'Editable'; ?></span>
-                                        <?php if ($f['is_dir']): ?><span class="badge" style="background:#fef3c7;border-color:#f1d48f;color:#a36b00;">Navigate via path tools</span><?php endif; ?>
-                                    </div>
-                                </header>
-                                <div class="plugin-body">
-                                    <?php if (!$f['is_dir']): ?>
-                                        <details>
-                                            <summary class="badge" style="cursor:pointer;">Edit file</summary>
-                                            <form method="post">
-                                                <input type="hidden" name="action" value="save_file">
-                                                <input type="hidden" name="path" value="<?php echo htmlspecialchars($f['name']); ?>">
-                                                <textarea name="content"><?php echo htmlspecialchars(file_get_contents(user_root($user).'/'.$f['name'])); ?></textarea>
-                                                <button>Save</button>
-                                            </form>
-                                        </details>
-                                    <?php else: ?>
-                                        <div class="muted">Folder detected. Upload targets will honor subdirectories automatically.</div>
-                                    <?php endif; ?>
-                                </div>
-                                <footer>
-                                    <form method="post" onsubmit="return confirm('Delete <?php echo htmlspecialchars($f['name']); ?>?');">
-                                        <input type="hidden" name="action" value="delete_path">
-                                        <input type="hidden" name="path" value="<?php echo htmlspecialchars($f['name']); ?>">
-                                        <button class="danger">Delete</button>
-                                    </form>
-                                </footer>
-                            </div>
-                        <?php endforeach; ?>
-                        <details>
-                            <summary class="badge" style="cursor:pointer;">Create new file</summary>
-                            <form method="post">
-                                <input type="hidden" name="action" value="save_file">
-                                <input name="path" placeholder="index.html" required>
-                                <textarea name="content" placeholder="&lt;html&gt;Your site&lt;/html&gt;"></textarea>
-                                <button>Save File</button>
-                            </form>
-                        </details>
+            </header>
+            <div class="hero-grid">
+                <?php foreach ($hero as $h): ?>
+                <div class="hero-card" data-track='<?php echo json_encode($h); ?>'>
+                    <div class="pill-row">
+                        <span class="badge">Trending</span>
+                        <span class="badge"><?php echo htmlspecialchars($h['artist']); ?></span>
                     </div>
-                </div>
-                <div class="card">
-                    <header>Telemetry & Observability</header>
-                    <div class="card-body">
-                        <div class="stat-grid">
-                            <div class="stat">
-                                <div class="muted">Files</div>
-                                <div style="font-size:1.2rem;font-weight:800;"><?php echo $usage ? $usage['files'] : 0; ?></div>
-                            </div>
-                            <div class="stat">
-                                <div class="muted">Folders</div>
-                                <div style="font-size:1.2rem;font-weight:800;"><?php echo $usage ? $usage['folders'] : 0; ?></div>
-                            </div>
-                            <div class="stat">
-                                <div class="muted">Backups</div>
-                                <div style="font-size:1.2rem;font-weight:800;"><?php echo count($backups); ?></div>
-                            </div>
-                            <div class="stat">
-                                <div class="muted">Storage</div>
-                                <div style="font-size:1.2rem;font-weight:800;">~<?php echo number_format(($usage['bytes'] ?? 0)/1024/1024,2); ?> MB</div>
-                            </div>
-                        </div>
-                        <div class="timeline">
-                            <div class="timeline-item">Sandbox root pinned to: <code><?php echo htmlspecialchars(user_root($user)); ?></code></div>
-                            <div class="timeline-item">Audit trail latest: <?php echo $loginEvents ? htmlspecialchars($loginEvents[0]['event_at'].' · '.$loginEvents[0]['ip']) : 'No logins yet'; ?></div>
-                        </div>
+                    <?php if (!empty($h['artwork'])): ?><img src="<?php echo htmlspecialchars($h['artwork']); ?>" alt="art"><?php endif; ?>
+                    <div>
+                        <div style="font-weight:800;font-size:1rem;"><?php echo htmlspecialchars($h['title']); ?></div>
+                        <div class="muted">Duration: <?php echo $h['duration'] ? gmdate('i:s', (int)$h['duration']) : '~'; ?></div>
                     </div>
-                </div>
-                <div class="card">
-                    <header>Backups</header>
-                    <div class="card-body">
-                        <form method="post">
-                            <input type="hidden" name="action" value="create_backup">
-                            <button>Create Backup</button>
-                        </form>
-                        <details>
-                            <summary class="badge" style="cursor:pointer;">Restore backup into new folder</summary>
-                            <form method="post">
-                                <input type="hidden" name="action" value="restore_backup">
-                                <select name="backup_file" required>
-                                    <option value="">Select backup</option>
-                                    <?php foreach ($backups as $b): ?>
-                                        <option value="<?php echo htmlspecialchars($b['name']); ?>"><?php echo htmlspecialchars($b['name']); ?></option>
-                                    <?php endforeach; ?>
+                    <div class="pill-row">
+                        <button type="button" class="play-now" data-title="<?php echo htmlspecialchars($h['title']); ?>" data-artist="<?php echo htmlspecialchars($h['artist']); ?>" data-artwork="<?php echo htmlspecialchars($h['artwork']); ?>" data-stream="<?php echo htmlspecialchars($h['stream_url']); ?>" data-id="<?php echo htmlspecialchars($h['track_id']); ?>" data-duration="<?php echo (int)($h['duration'] ?? 0); ?>">Play now</button>
+                        <?php if ($user): ?>
+                            <form method="post" class="inline-add">
+                                <input type="hidden" name="action" value="save_track">
+                                <input type="hidden" name="track_id" value="<?php echo htmlspecialchars($h['track_id']); ?>">
+                                <input type="hidden" name="title" value="<?php echo htmlspecialchars($h['title']); ?>">
+                                <input type="hidden" name="artist" value="<?php echo htmlspecialchars($h['artist']); ?>">
+                                <input type="hidden" name="artwork" value="<?php echo htmlspecialchars($h['artwork']); ?>">
+                                <input type="hidden" name="stream_url" value="<?php echo htmlspecialchars($h['stream_url']); ?>">
+                                <input type="hidden" name="duration" value="<?php echo (int)($h['duration'] ?? 0); ?>">
+                                <select name="playlist_id" required>
+                                    <?php foreach ($playlists as $pl): ?><option value="<?php echo (int)$pl['id']; ?>">Save to <?php echo htmlspecialchars($pl['name']); ?></option><?php endforeach; ?>
                                 </select>
-                                <button>Restore</button>
+                                <button class="ghost">Save</button>
                             </form>
-                        </details>
-                        <?php foreach ($backups as $b): ?>
-                            <div class="plugin-row">
-                                <header>
-                                    <div>
-                                        <div style="font-weight:700;"><?php echo htmlspecialchars($b['name']); ?></div>
-                                        <div class="muted">Created <?php echo htmlspecialchars($b['modified']); ?> · <?php echo number_format($b['size']/1024,2); ?> KB</div>
-                                    </div>
-                                    <div class="pill-row">
-                                        <span class="badge">Archive</span>
-                                        <a class="badge" href="<?php echo htmlspecialchars('users/'.$user['id'].'_'.preg_replace('/[^a-zA-Z0-9_-]/','_', $user['username']).'/backups/'.$b['name']); ?>" download>Download</a>
-                                    </div>
-                                </header>
-                                <footer>
-                                    <form method="post" onsubmit="return confirm('Restore from <?php echo htmlspecialchars($b['name']); ?>?');">
-                                        <input type="hidden" name="action" value="restore_backup">
-                                        <input type="hidden" name="backup_file" value="<?php echo htmlspecialchars($b['name']); ?>">
-                                        <button>Restore into new folder</button>
-                                    </form>
-                                </footer>
-                            </div>
-                        <?php endforeach; ?>
+                        <?php endif; ?>
                     </div>
                 </div>
-                <div class="card">
-                    <header>Login Events · Audit</header>
-                    <div class="card-body">
-                        <div class="timeline">
-                            <?php if (empty($loginEvents)): ?>
-                                <div class="timeline-item">No login activity yet.</div>
+                <?php endforeach; ?>
+            </div>
+        </div>
+        <div class="section">
+            <header>
+                <div>
+                    <div class="muted" style="letter-spacing:0.08em; text-transform:uppercase; font-size:0.8rem;">Discovery rail</div>
+                    <h2>Search the Audius galaxy</h2>
+                </div>
+                <div class="pill-row"><span class="badge">Full-length streams</span><span class="badge">Live search</span></div>
+            </header>
+            <div class="search-bar">
+                <input id="search" placeholder="Search artists, moods, genres..." aria-label="Search Audius">
+                <button id="searchBtn">Search</button>
+            </div>
+            <div class="muted" id="searchStatus">Try "dream pop" or "lofi"</div>
+            <div id="searchResults" class="stack"></div>
+        </div>
+        <?php if ($user): ?>
+        <div class="section">
+            <header>
+                <div>
+                    <div class="muted" style="letter-spacing:0.08em; text-transform:uppercase; font-size:0.8rem;">Your universe</div>
+                    <h2>Playlists & queues</h2>
+                </div>
+                <div class="pill-row"><span class="badge">Curate</span><span class="badge">Story</span></div>
+            </header>
+            <div class="playlist-grid">
+                <?php foreach ($playlists as $pl): ?>
+                    <div class="playlist-card">
+                        <div class="flex" style="justify-content:space-between;">
+                            <div>
+                                <div style="font-weight:800; font-size:1.05rem;"><?php echo htmlspecialchars($pl['name']); ?></div>
+                                <div class="muted"><?php echo count($pl['tracks']); ?> tracks</div>
+                            </div>
+                            <form method="post" onsubmit="return confirm('Delete playlist?');">
+                                <input type="hidden" name="action" value="delete_playlist">
+                                <input type="hidden" name="playlist_id" value="<?php echo (int)$pl['id']; ?>">
+                                <button class="ghost">Delete</button>
+                            </form>
+                        </div>
+                        <div class="stack">
+                            <?php if (empty($pl['tracks'])): ?>
+                                <div class="muted">Empty. Add something from hero or search.</div>
                             <?php else: ?>
-                                <?php foreach ($loginEvents as $event): ?>
-                                    <div class="timeline-item">
-                                        <div><strong><?php echo htmlspecialchars($event['event_at']); ?></strong></div>
-                                        <div class="muted">IP: <?php echo htmlspecialchars($event['ip'] ?? 'n/a'); ?></div>
+                                <?php foreach ($pl['tracks'] as $t): ?>
+                                    <div class="track-row">
+                                        <img class="avatar" src="<?php echo htmlspecialchars($t['artwork'] ?: 'https://placehold.co/64x64'); ?>" alt="art">
+                                        <div>
+                                            <div style="font-weight:700;"><?php echo htmlspecialchars($t['title']); ?></div>
+                                            <div class="muted"><?php echo htmlspecialchars($t['artist']); ?> · <?php echo $t['duration'] ? gmdate('i:s',(int)$t['duration']) : '~'; ?></div>
+                                        </div>
+                                        <div class="pill-row">
+                                            <button type="button" class="play-now" data-title="<?php echo htmlspecialchars($t['title']); ?>" data-artist="<?php echo htmlspecialchars($t['artist']); ?>" data-artwork="<?php echo htmlspecialchars($t['artwork']); ?>" data-stream="<?php echo htmlspecialchars($t['stream_url']); ?>" data-id="<?php echo htmlspecialchars($t['track_id']); ?>" data-duration="<?php echo (int)$t['duration']; ?>">Play</button>
+                                            <form method="post">
+                                                <input type="hidden" name="action" value="remove_track">
+                                                <input type="hidden" name="track_row" value="<?php echo (int)$t['id']; ?>">
+                                                <button class="ghost">Remove</button>
+                                            </form>
+                                        </div>
                                     </div>
                                 <?php endforeach; ?>
                             <?php endif; ?>
                         </div>
                     </div>
-                </div>
+                <?php endforeach; ?>
             </div>
+        </div>
         <?php endif; ?>
     </main>
+    <aside class="right">
+        <div class="section" style="height:100%; display:grid; gap:12px;">
+            <header>
+                <div>
+                    <div class="muted" style="letter-spacing:0.08em; text-transform:uppercase; font-size:0.8rem;">Now playing</div>
+                    <h2>Spatial player</h2>
+                </div>
+                <span class="badge">Queue</span>
+            </header>
+            <div class="player" id="playerPanel">
+                <div class="flex">
+                    <img id="playerArt" class="avatar" src="https://placehold.co/64x64" alt="artwork">
+                    <div>
+                        <div id="playerTitle" style="font-weight:800;">Select a track</div>
+                        <div id="playerArtist" class="muted">MIC Pro</div>
+                    </div>
+                </div>
+                <div class="timeline"><span id="progressBar"></span></div>
+                <div class="flex" style="justify-content:space-between;">
+                    <div class="pill-row">
+                        <button id="prevBtn" class="ghost" type="button">Prev</button>
+                        <button id="playPause" type="button">Play</button>
+                        <button id="nextBtn" class="ghost" type="button">Next</button>
+                    </div>
+                    <div class="muted" id="timecode">0:00 / 0:00</div>
+                </div>
+            </div>
+            <div>
+                <div class="muted" style="margin-bottom:6px;">Up next</div>
+                <div class="queue" id="queue"></div>
+            </div>
+        </div>
+    </aside>
 </div>
+<script>
+const player = new Audio();
+player.crossOrigin = 'anonymous';
+let queue = [];
+let currentIndex = -1;
+const queueEl = document.getElementById('queue');
+const progressEl = document.getElementById('progressBar');
+const timecode = document.getElementById('timecode');
+const playerArt = document.getElementById('playerArt');
+const playerTitle = document.getElementById('playerTitle');
+const playerArtist = document.getElementById('playerArtist');
+
+function renderQueue(){
+    queueEl.innerHTML = '';
+    queue.forEach((t, idx)=>{
+        const row = document.createElement('div');
+        row.className = 'track-row';
+        row.innerHTML = `<img class="avatar" src="${t.artwork || 'https://placehold.co/64x64'}" alt="art"><div><div style="font-weight:700;">${t.title}</div><div class="muted">${t.artist}</div></div><button type="button" class="ghost" data-jump="${idx}">${idx===currentIndex?'Playing':'Play'}</button>`;
+        row.querySelector('button').onclick = ()=>{ playAt(idx); };
+        queueEl.appendChild(row);
+    });
+}
+
+function playAt(idx){
+    if(idx < 0 || idx >= queue.length) return;
+    currentIndex = idx;
+    const t = queue[idx];
+    player.src = t.stream_url;
+    player.play().catch(()=>{});
+    playerArt.src = t.artwork || 'https://placehold.co/64x64';
+    playerTitle.textContent = t.title;
+    playerArtist.textContent = t.artist;
+    renderQueue();
+}
+
+function addToQueue(track){
+    queue.push(track);
+    renderQueue();
+    if(currentIndex === -1){ playAt(0); }
+}
+
+player.ontimeupdate = ()=>{
+    if(!player.duration || isNaN(player.duration)) return;
+    const pct = (player.currentTime / player.duration) * 100;
+    progressEl.style.width = pct + '%';
+    const format = (s)=>{ if(!isFinite(s)) return '0:00'; const m = Math.floor(s/60); const sec = Math.floor(s%60).toString().padStart(2,'0'); return `${m}:${sec}`; };
+    timecode.textContent = `${format(player.currentTime)} / ${format(player.duration)}`;
+};
+player.onended = ()=>{ playAt(currentIndex+1); };
+
+document.querySelectorAll('.play-now').forEach(btn=>{
+    btn.onclick = ()=>{
+        const track = {
+            track_id: btn.dataset.id,
+            title: btn.dataset.title,
+            artist: btn.dataset.artist,
+            artwork: btn.dataset.artwork,
+            stream_url: btn.dataset.stream,
+            duration: parseInt(btn.dataset.duration||'0',10)
+        };
+        addToQueue(track);
+        playAt(queue.length-1);
+    };
+});
+
+const searchBtn = document.getElementById('searchBtn');
+const searchInput = document.getElementById('search');
+const searchResults = document.getElementById('searchResults');
+const searchStatus = document.getElementById('searchStatus');
+
+async function search(){
+    const term = searchInput.value.trim();
+    if(!term){ searchStatus.textContent = 'Type something to search.'; return; }
+    searchStatus.textContent = 'Searching Audius...';
+    const res = await fetch(`?api=search&q=${encodeURIComponent(term)}`);
+    const data = await res.json();
+    const tracks = data.tracks || [];
+    searchResults.innerHTML = '';
+    if(tracks.length === 0){ searchResults.innerHTML = '<div class="muted">Nothing found.</div>'; searchStatus.textContent=''; return; }
+    searchStatus.textContent = `${tracks.length} results`;
+    tracks.forEach(t=>{
+        const row = document.createElement('div');
+        row.className = 'track-row';
+        row.innerHTML = `<img class="avatar" src="${t.artwork || 'https://placehold.co/64x64'}" alt="art"><div><div style="font-weight:800;">${t.title}</div><div class="muted">${t.artist}</div></div><div class="pill-row"></div>`;
+        const playBtn = document.createElement('button');
+        playBtn.textContent = 'Play';
+        playBtn.type = 'button';
+        playBtn.onclick = ()=>{ addToQueue(t); playAt(queue.length-1); };
+        row.querySelector('.pill-row').appendChild(playBtn);
+        <?php if ($user): ?>
+        const form = document.createElement('form');
+        form.method = 'post';
+        form.innerHTML = `
+            <input type="hidden" name="action" value="save_track">
+            <input type="hidden" name="track_id" value="${t.track_id}">
+            <input type="hidden" name="title" value="${t.title}">
+            <input type="hidden" name="artist" value="${t.artist}">
+            <input type="hidden" name="artwork" value="${t.artwork}">
+            <input type="hidden" name="stream_url" value="${t.stream_url}">
+            <input type="hidden" name="duration" value="${t.duration||0}">
+            <select name="playlist_id" required>
+                <?php foreach ($playlists as $pl): ?>
+                    <option value="<?php echo (int)$pl['id']; ?>">Save to <?php echo htmlspecialchars($pl['name']); ?></option>
+                <?php endforeach; ?>
+            </select>
+            <button class="ghost">Save</button>`;
+        row.querySelector('.pill-row').appendChild(form);
+        <?php endif; ?>
+        searchResults.appendChild(row);
+    });
+}
+searchBtn.onclick = search;
+searchInput.onkeydown = (e)=>{ if(e.key==='Enter'){ e.preventDefault(); search(); } };
+
+(async function preloadTrending(){
+    const res = await fetch('?api=trending');
+    const data = await res.json();
+    const tracks = data.tracks||[];
+    tracks.slice(0,5).forEach(t=>queue.push(t));
+    renderQueue();
+})();
+</script>
 </body>
 </html>
