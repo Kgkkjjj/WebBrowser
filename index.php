@@ -303,7 +303,7 @@ if ($action && in_array($action, ['create_folder','upload_file','save_file','del
                 if (!file_exists($dest)) {
                     mkdir($dest, 0775, true);
                 }
-                $html = "<!doctype html><html><head><meta charset='utf-8'><title>Galaxy Site</title><link rel='stylesheet' href='style.css'></head><body><main><h1>Welcome to your galaxy site</h1><p>Launchpad ready.</p><div id='stats'></div><script src='app.js'></script></main></body></html>";
+                $html = "<!doctype html><html><head><meta charset='utf-8'><title>MIC Site</title><link rel='stylesheet' href='style.css'></head><body><main><h1>Welcome to your MIC site</h1><p>Launchpad ready.</p><div id='stats'></div><script src='app.js'></script></main></body></html>";
                 $css = "body{font-family:system-ui;background:#050915;color:#e9ecf6;margin:0;display:grid;place-items:center;min-height:100vh;}main{padding:30px;border-radius:16px;background:linear-gradient(135deg,#0f172a,#0b1222);box-shadow:0 20px 80px rgba(0,0,0,0.5);}h1{letter-spacing:0.08em;}";
                 $js = "fetch('stats.json').then(r=>r.json()).then(d=>{document.querySelector('#stats').innerHTML='<strong>Stats:</strong> '+JSON.stringify(d)}).catch(()=>{});";
                 file_put_contents($dest . '/index.html', $html);
@@ -368,27 +368,26 @@ function card(string $title, string $body, string $accent): string {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GalaxyHost Portal</title>
+    <title>MIC Hosting Control</title>
     <style>
         :root {
-            --bg: #0b0f1a;
-            --panel: #11182a;
-            --muted: #778; 
-            --accent: #5ef0ff;
-            --accent-2: #8f7cff;
-            --accent-3: #ffd166;
-            --danger: #ff6b6b;
-            --success: #5ce29a;
-            --text: #e9ecf6;
+            --bg: #f0f2f5;
+            --panel: #ffffff;
+            --muted: #6c7781;
+            --accent: #0073aa;
+            --accent-2: #00a0d2;
+            --accent-3: #46b450;
+            --danger: #d63638;
+            --success: #46b450;
+            --sidebar: #23282d;
+            --border: #dcdcde;
+            --text: #1d2327;
         }
         * { box-sizing: border-box; }
         body {
             margin: 0;
-            font-family: 'Segoe UI', Tahoma, sans-serif;
-            background: radial-gradient(circle at 20% 20%, #112, #0b0f1a 40%),
-                        radial-gradient(circle at 80% 0%, rgba(94,240,255,0.2), transparent 35%),
-                        linear-gradient(135deg, rgba(143,124,255,0.12), transparent 30%),
-                        #0b0f1a;
+            font-family: 'Open Sans', 'Segoe UI', Tahoma, sans-serif;
+            background: var(--bg);
             color: var(--text);
             min-height: 100vh;
         }
@@ -396,132 +395,136 @@ function card(string $title, string $body, string $accent): string {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 18px 32px;
+            padding: 14px 24px;
             position: sticky;
             top: 0;
             z-index: 10;
-            background: rgba(11,15,26,0.9);
-            backdrop-filter: blur(12px);
-            border-bottom: 1px solid rgba(255,255,255,0.04);
+            background: #1d2327;
+            color: #f7f7f7;
+            border-bottom: 1px solid #111;
         }
         header.top h1 {
             margin: 0;
-            font-size: 1.4rem;
-            letter-spacing: 0.08em;
+            font-size: 1.2rem;
+            letter-spacing: 0.04em;
             text-transform: uppercase;
         }
         .pill {
-            padding: 8px 14px;
-            border-radius: 999px;
-            border: 1px solid rgba(255,255,255,0.1);
-            background: linear-gradient(135deg, rgba(94,240,255,0.18), rgba(143,124,255,0.16));
-            color: var(--text);
-            font-size: 0.9rem;
+            padding: 6px 12px;
+            border-radius: 4px;
+            border: 1px solid rgba(255,255,255,0.25);
+            background: rgba(255,255,255,0.1);
+            color: #f7f7f7;
+            font-size: 0.85rem;
         }
         .layout {
             display: grid;
-            grid-template-columns: 280px 1fr;
+            grid-template-columns: 240px 1fr;
             gap: 18px;
             padding: 18px 22px 40px;
         }
         aside {
-            background: var(--panel);
-            border: 1px solid rgba(255,255,255,0.05);
-            border-radius: 18px;
-            padding: 18px;
+            background: var(--sidebar);
+            border: 1px solid #000;
+            border-radius: 6px;
+            padding: 10px 0;
             display: flex;
             flex-direction: column;
-            gap: 12px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.35);
+            gap: 6px;
+            color: #c3c4c7;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.35);
         }
         .nav-item {
-            padding: 12px 14px;
-            border-radius: 12px;
+            padding: 10px 16px;
             cursor: pointer;
             display: flex;
             align-items: center;
-            gap: 12px;
-            color: var(--text);
-            background: rgba(255,255,255,0.02);
-            border: 1px solid rgba(255,255,255,0.04);
-            transition: transform 0.1s ease, border 0.2s ease, background 0.2s ease;
+            gap: 10px;
+            color: #f7f7f7;
+            border-left: 3px solid transparent;
+            transition: background 0.15s ease, border-color 0.15s ease;
+            font-weight: 600;
+            text-decoration: none;
         }
-        .nav-item:hover { transform: translateX(2px); background: rgba(94,240,255,0.08); border-color: rgba(94,240,255,0.35); }
+        .nav-item:hover { background: #191e23; border-color: var(--accent); }
         main { display: flex; flex-direction: column; gap: 18px; }
         .grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
             gap: 18px;
         }
         .card {
-            background: linear-gradient(135deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)), var(--panel);
-            border: 1px solid rgba(255,255,255,0.08);
-            border-radius: 18px;
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 4px;
             padding: 0;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.35);
+            box-shadow: 0 1px 1px rgba(0,0,0,0.04);
             overflow: hidden;
             position: relative;
         }
-        .card::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background: linear-gradient(135deg, var(--accent) 0%, transparent 50%);
-            opacity: 0.05;
-            pointer-events: none;
-        }
+        .card::before { display: none; }
         .card header {
-            padding: 14px 16px;
+            padding: 12px 14px;
             font-weight: 700;
-            letter-spacing: 0.05em;
-            text-transform: uppercase;
-            font-size: 0.9rem;
-            background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 35%, transparent), transparent);
-            border-bottom: 1px solid rgba(255,255,255,0.06);
+            text-transform: none;
+            font-size: 0.95rem;
+            background: #f6f7f7;
+            border-bottom: 1px solid var(--border);
+            color: #1d2327;
         }
-        .card-body { padding: 16px; display: grid; gap: 12px; }
+        .card-body { padding: 14px; display: grid; gap: 12px; }
         form { display: grid; gap: 10px; }
         input, textarea, select, button {
-            border-radius: 10px;
-            border: 1px solid rgba(255,255,255,0.08);
-            padding: 10px 12px;
-            background: rgba(255,255,255,0.04);
+            border-radius: 3px;
+            border: 1px solid var(--border);
+            padding: 8px 10px;
+            background: #fff;
             color: var(--text);
-            font-size: 0.98rem;
+            font-size: 0.97rem;
             outline: none;
         }
-        textarea { resize: vertical; min-height: 120px; font-family: 'Fira Code', monospace; }
+        textarea { resize: vertical; min-height: 120px; font-family: 'Fira Code', monospace; background: #fbfbfb; }
         button {
             cursor: pointer;
-            background: linear-gradient(135deg, var(--accent), var(--accent-2));
-            border: none;
-            color: #051225;
+            background: linear-gradient(180deg, var(--accent-2), var(--accent));
+            border: 1px solid #005177;
+            color: #fff;
             font-weight: 700;
-            transition: transform 0.1s ease;
+            transition: filter 0.1s ease;
         }
-        button:hover { transform: translateY(-1px) scale(1.01); }
-        .danger { background: linear-gradient(135deg, #ff6b6b, #ff9f7a); color: #220; }
+        button:hover { filter: brightness(1.05); }
+        .danger { background: linear-gradient(180deg, #e35b5b, #c23b3b); border-color: #9b1c1c; }
         .muted { color: var(--muted); font-size: 0.9rem; }
         table { width: 100%; border-collapse: collapse; }
-        th, td { padding: 10px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.06); }
-        th { color: var(--muted); font-size: 0.85rem; letter-spacing: 0.06em; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: top; }
+        th { color: var(--muted); font-size: 0.85rem; letter-spacing: 0.01em; text-transform: uppercase; }
         .flex { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-        .badge { padding: 6px 10px; border-radius: 10px; background: rgba(94,240,255,0.1); color: var(--accent); font-weight: 700; font-size: 0.85rem; }
+        .badge { padding: 6px 10px; border-radius: 3px; background: #e9f5ff; color: var(--accent); font-weight: 700; font-size: 0.85rem; border: 1px solid #c0d9f0; text-decoration: none; display: inline-block; }
         .pill-row { display: flex; gap: 8px; flex-wrap: wrap; }
         .status-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--success); box-shadow: 0 0 8px var(--success); }
         .dual { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-        .progress { height: 8px; background: rgba(255,255,255,0.06); border-radius: 999px; overflow: hidden; position: relative; }
+        .progress { height: 8px; background: #edeff0; border-radius: 999px; overflow: hidden; position: relative; }
         .progress span { display: block; height: 100%; background: linear-gradient(90deg,var(--accent),var(--accent-2)); }
         .stat-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(160px,1fr)); gap: 10px; }
-        .stat { padding: 12px; border-radius: 12px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); }
+        .stat { padding: 12px; border-radius: 4px; background: #f6f7f7; border: 1px solid var(--border); }
         .timeline { display: grid; gap: 8px; }
-        .timeline-item { padding: 10px; border-radius: 10px; background: rgba(255,255,255,0.02); border: 1px dashed rgba(255,255,255,0.08); }
-        @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+        .timeline-item { padding: 10px; border-radius: 4px; background: #fff; border: 1px solid var(--border); }
+        .timeline strong { color: #111; }
+        details summary { cursor: pointer; }
+        details { border: 1px dashed var(--border); padding: 12px; border-radius: 4px; background: #fdfdfd; }
+        .plugin-row { border: 1px solid var(--border); border-radius: 4px; margin-bottom: 12px; background: #fff; box-shadow: 0 1px 1px rgba(0,0,0,0.04); }
+        .plugin-row header { background: #f6f7f7; border-bottom: 1px solid var(--border); padding: 12px; font-weight: 700; color: #111; display: flex; align-items: center; justify-content: space-between; }
+        .plugin-row .plugin-body { padding: 12px; display: grid; gap: 10px; }
+        .plugin-row footer { padding: 12px; border-top: 1px solid var(--border); background: #fbfbfb; display: flex; gap: 10px; flex-wrap: wrap; }
+        @media (max-width: 900px) {
+            .layout { grid-template-columns: 1fr; }
+            header.top { position: sticky; }
+        }
     </style>
 </head>
 <body>
 <header class="top">
-    <h1>GalaxyHost</h1>
+    <h1>MIC Hosting</h1>
     <div class="pill">
         <span class="status-dot"></span>
         <strong>SQLite Core</strong> · Secure file sandboxes
@@ -648,43 +651,48 @@ function card(string $title, string $body, string $accent): string {
                                 <button>Provision Demo Site</button>
                             </form>
                         </details>
-                        <div class="muted">Automations extend your sandbox with instant scaffolding and controlled clones without leaving GalaxyHost.</div>
+                        <div class="muted">Automations extend your sandbox with instant scaffolding and controlled clones without leaving MIC Hosting.</div>
                     </div>
                 </div>
                 <div class="card">
                     <header>File Manager</header>
                     <div class="card-body">
-                        <table>
-                            <thead><tr><th>Name</th><th>Type</th><th>Size</th><th>Modified</th><th></th></tr></thead>
-                            <tbody>
-                            <?php foreach ($files as $f): ?>
-                                <tr>
-                                    <td><?php echo htmlspecialchars($f['name']); ?></td>
-                                    <td><?php echo $f['is_dir'] ? 'Directory' : 'File'; ?></td>
-                                    <td><?php echo $f['is_dir'] ? '-' : number_format($f['size']/1024,2).' KB'; ?></td>
-                                    <td><?php echo htmlspecialchars($f['modified']); ?></td>
-                                    <td class="flex">
-                                        <?php if (!$f['is_dir']): ?>
-                                            <details>
-                                                <summary class="badge" style="cursor:pointer;">Edit</summary>
-                                                <form method="post">
-                                                    <input type="hidden" name="action" value="save_file">
-                                                    <input type="hidden" name="path" value="<?php echo htmlspecialchars($f['name']); ?>">
-                                                    <textarea name="content"><?php echo htmlspecialchars(file_get_contents(user_root($user).'/'.$f['name'])); ?></textarea>
-                                                    <button>Save</button>
-                                                </form>
-                                            </details>
-                                        <?php endif; ?>
-                                        <form method="post" onsubmit="return confirm('Delete <?php echo htmlspecialchars($f['name']); ?>?');">
-                                            <input type="hidden" name="action" value="delete_path">
-                                            <input type="hidden" name="path" value="<?php echo htmlspecialchars($f['name']); ?>">
-                                            <button class="danger">Delete</button>
-                                        </form>
-                                    </td>
-                                </tr>
-                            <?php endforeach; ?>
-                            </tbody>
-                        </table>
+                        <?php foreach ($files as $f): ?>
+                            <div class="plugin-row">
+                                <header>
+                                    <div>
+                                        <div style="font-weight:700;"><?php echo htmlspecialchars($f['name']); ?></div>
+                                        <div class="muted"><?php echo $f['is_dir'] ? 'Directory' : 'File'; ?> · <?php echo $f['is_dir'] ? '—' : number_format($f['size']/1024,2).' KB'; ?> · <?php echo htmlspecialchars($f['modified']); ?></div>
+                                    </div>
+                                    <div class="pill-row">
+                                        <span class="badge"><?php echo $f['is_dir'] ? 'Folder' : 'Editable'; ?></span>
+                                        <?php if ($f['is_dir']): ?><span class="badge" style="background:#fef3c7;border-color:#f1d48f;color:#a36b00;">Navigate via path tools</span><?php endif; ?>
+                                    </div>
+                                </header>
+                                <div class="plugin-body">
+                                    <?php if (!$f['is_dir']): ?>
+                                        <details>
+                                            <summary class="badge" style="cursor:pointer;">Edit file</summary>
+                                            <form method="post">
+                                                <input type="hidden" name="action" value="save_file">
+                                                <input type="hidden" name="path" value="<?php echo htmlspecialchars($f['name']); ?>">
+                                                <textarea name="content"><?php echo htmlspecialchars(file_get_contents(user_root($user).'/'.$f['name'])); ?></textarea>
+                                                <button>Save</button>
+                                            </form>
+                                        </details>
+                                    <?php else: ?>
+                                        <div class="muted">Folder detected. Upload targets will honor subdirectories automatically.</div>
+                                    <?php endif; ?>
+                                </div>
+                                <footer>
+                                    <form method="post" onsubmit="return confirm('Delete <?php echo htmlspecialchars($f['name']); ?>?');">
+                                        <input type="hidden" name="action" value="delete_path">
+                                        <input type="hidden" name="path" value="<?php echo htmlspecialchars($f['name']); ?>">
+                                        <button class="danger">Delete</button>
+                                    </form>
+                                </footer>
+                            </div>
+                        <?php endforeach; ?>
                         <details>
                             <summary class="badge" style="cursor:pointer;">Create new file</summary>
                             <form method="post">
@@ -743,19 +751,27 @@ function card(string $title, string $body, string $accent): string {
                                 <button>Restore</button>
                             </form>
                         </details>
-                        <table>
-                            <thead><tr><th>File</th><th>Size</th><th>Created</th><th>Download</th></tr></thead>
-                            <tbody>
-                            <?php foreach ($backups as $b): ?>
-                                <tr>
-                                    <td><?php echo htmlspecialchars($b['name']); ?></td>
-                                    <td><?php echo number_format($b['size']/1024,2).' KB'; ?></td>
-                                    <td><?php echo htmlspecialchars($b['modified']); ?></td>
-                                    <td><a class="badge" href="<?php echo htmlspecialchars('users/'.$user['id'].'_'.preg_replace('/[^a-zA-Z0-9_-]/','_', $user['username']).'/backups/'.$b['name']); ?>" download>Download</a></td>
-                                </tr>
-                            <?php endforeach; ?>
-                            </tbody>
-                        </table>
+                        <?php foreach ($backups as $b): ?>
+                            <div class="plugin-row">
+                                <header>
+                                    <div>
+                                        <div style="font-weight:700;"><?php echo htmlspecialchars($b['name']); ?></div>
+                                        <div class="muted">Created <?php echo htmlspecialchars($b['modified']); ?> · <?php echo number_format($b['size']/1024,2); ?> KB</div>
+                                    </div>
+                                    <div class="pill-row">
+                                        <span class="badge">Archive</span>
+                                        <a class="badge" href="<?php echo htmlspecialchars('users/'.$user['id'].'_'.preg_replace('/[^a-zA-Z0-9_-]/','_', $user['username']).'/backups/'.$b['name']); ?>" download>Download</a>
+                                    </div>
+                                </header>
+                                <footer>
+                                    <form method="post" onsubmit="return confirm('Restore from <?php echo htmlspecialchars($b['name']); ?>?');">
+                                        <input type="hidden" name="action" value="restore_backup">
+                                        <input type="hidden" name="backup_file" value="<?php echo htmlspecialchars($b['name']); ?>">
+                                        <button>Restore into new folder</button>
+                                    </form>
+                                </footer>
+                            </div>
+                        <?php endforeach; ?>
                     </div>
                 </div>
                 <div class="card">
