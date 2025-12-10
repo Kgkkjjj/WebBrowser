@@ -1,0 +1,28 @@
+<resources>
+    <string name="app_name">MIC Browser</string>
+    <string name="subtitle_complex">Layered controls. Intentional browsing.</string>
+    <string name="url_hint">Search or enter address</string>
+    <string name="action_back">Back</string>
+    <string name="action_forward">Forward</string>
+    <string name="action_refresh">Refresh</string>
+    <string name="action_new_tab">New Tab</string>
+    <string name="action_close_tab">Close Tab</string>
+    <string name="action_share">Share</string>
+    <string name="action_copy">Copy Link</string>
+    <string name="action_bookmark">Bookmark</string>
+    <string name="action_history">History</string>
+    <string name="action_desktop_on">Desktop on</string>
+    <string name="action_desktop_off">Desktop off</string>
+    <string name="action_incognito_on">Incognito on</string>
+    <string name="action_incognito_off">Incognito off</string>
+    <string name="action_home">Home</string>
+    <string name="label_bookmarks">Bookmarks</string>
+    <string name="label_history">History</string>
+    <string name="label_new_tab">New Tab</string>
+    <string name="bookmark_added">Saved to bookmarks</string>
+    <string name="bookmark_exists">Bookmark already saved</string>
+    <string name="empty_collection">Nothing to show yet</string>
+    <string name="incognito_on">Incognito enabled</string>
+    <string name="incognito_off">Incognito disabled</string>
+    <string name="default_home">https://www.duckduckgo.com</string>
+</resources>
