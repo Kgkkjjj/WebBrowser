@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>MIC Pro - Mobile Music Platform</title>
+  <style>
+    :root {
+      --bg: #05060b;
+      --panel: #0f111a;
+      --accent: #b58bff;
+      --accent-2: #58e1c1;
+      --muted: #8c95b2;
+      --text: #e6e9ff;
+      --danger: #ff6b8a;
+      --warning: #ffcd4b;
+      --radius: 18px;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Inter", system-ui, -apple-system, sans-serif;
+      background:
+        radial-gradient(circle at 20% 20%, rgba(181, 139, 255, 0.08), transparent 35%),
+        radial-gradient(circle at 80% 10%, rgba(88, 225, 193, 0.1), transparent 30%),
+        linear-gradient(120deg, #05060b, #090b16 40%, #05060b);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px 32px;
+    }
+
+    .app-shell {
+      width: min(430px, 100%);
+      background: linear-gradient(160deg, rgba(15, 17, 26, 0.92), rgba(15, 17, 26, 0.7));
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 24px;
+      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+      overflow: hidden;
+      position: relative;
+      backdrop-filter: blur(16px);
+    }
+
+    .app-shell::before,
+    .app-shell::after {
+      content: "";
+      position: absolute;
+      filter: blur(60px);
+      opacity: 0.6;
+      z-index: 0;
+    }
+
+    .app-shell::before {
+      width: 220px;
+      height: 220px;
+      background: radial-gradient(circle, rgba(181, 139, 255, 0.22), transparent 55%);
+      top: -30px;
+      left: -60px;
+    }
+
+    .app-shell::after {
+      width: 220px;
+      height: 220px;
+      background: radial-gradient(circle, rgba(88, 225, 193, 0.2), transparent 50%);
+      bottom: -40px;
+      right: -50px;
+    }
+
+    header {
+      padding: 20px 18px 12px;
+      display: grid;
+      grid-template-columns: 52px 1fr 48px;
+      align-items: center;
+      gap: 12px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .avatar {
+      width: 52px;
+      height: 52px;
+      border-radius: 16px;
+      background: linear-gradient(135deg, #3c3f57, #1a1c2a);
+      position: relative;
+      overflow: hidden;
+      display: grid;
+      place-items: center;
+      color: var(--muted);
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .avatar::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 30% 30%, rgba(181, 139, 255, 0.25), transparent 40%);
+    }
+
+    .title-block h1 {
+      margin: 0;
+      font-size: 20px;
+      letter-spacing: 0.5px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(181, 139, 255, 0.12);
+      color: var(--accent);
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      font-weight: 700;
+      border: 1px solid rgba(181, 139, 255, 0.35);
+    }
+
+    .header-actions {
+      display: grid;
+      gap: 10px;
+    }
+
+    .icon-btn {
+      width: 48px;
+      height: 48px;
+      border-radius: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: linear-gradient(145deg, rgba(181, 139, 255, 0.12), rgba(88, 225, 193, 0.08));
+      color: var(--text);
+      font-weight: 700;
+      display: grid;
+      place-items: center;
+      box-shadow: 0 8px 18px rgba(0, 0, 0, 0.25);
+    }
+
+    .glass-panel {
+      margin: 0 16px 16px;
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.04);
+      backdrop-filter: blur(10px);
+      position: relative;
+      z-index: 1;
+    }
+
+    .glass-panel::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 40%);
+      border-radius: inherit;
+      pointer-events: none;
+    }
+
+    .search-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 12px;
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    }
+
+    .search-input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      color: var(--text);
+      font-size: 15px;
+      outline: none;
+    }
+
+    .chip-row {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding: 8px 2px 4px;
+      scrollbar-width: none;
+    }
+    .chip-row::-webkit-scrollbar { display: none; }
+
+    .chip {
+      padding: 10px 14px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, rgba(88, 225, 193, 0.18), rgba(181, 139, 255, 0.14));
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      color: var(--text);
+      font-size: 13px;
+      white-space: nowrap;
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.18);
+    }
+
+    .grid {
+      display: grid;
+      gap: 12px;
+    }
+
+    .stat-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 12px;
+    }
+
+    .stat-card {
+      padding: 14px;
+      border-radius: 16px;
+      background: linear-gradient(145deg, rgba(181, 139, 255, 0.12), rgba(15, 17, 26, 0.7));
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .stat-card::after {
+      content: "";
+      position: absolute;
+      width: 90px;
+      height: 90px;
+      background: radial-gradient(circle, rgba(255, 255, 255, 0.08), transparent 60%);
+      top: -30px;
+      right: -30px;
+    }
+
+    .stat-card small {
+      color: var(--muted);
+      letter-spacing: 0.4px;
+    }
+    .stat-card h2 {
+      margin: 8px 0 0;
+      font-size: 22px;
+      letter-spacing: 0.3px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .row-between {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .now-playing {
+      padding: 14px 14px 12px;
+      border-radius: 16px;
+      background: linear-gradient(135deg, rgba(181, 139, 255, 0.18), rgba(88, 225, 193, 0.16));
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
+    }
+
+    .now-playing::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 70% 10%, rgba(255, 255, 255, 0.18), transparent 40%);
+      pointer-events: none;
+    }
+
+    .song-meta {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .cover {
+      width: 68px;
+      height: 68px;
+      border-radius: 14px;
+      background: linear-gradient(145deg, #1b1e2d, #0d0f19);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      overflow: hidden;
+      position: relative;
+      display: grid;
+      place-items: center;
+      color: var(--text);
+      font-weight: 700;
+    }
+
+    .badge {
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: var(--muted);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .song-meta h3 { margin: 6px 0 2px; font-size: 16px; }
+    .song-meta p { margin: 0; color: var(--muted); font-size: 13px; }
+
+    .timeline {
+      position: relative;
+      height: 6px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.1);
+      overflow: hidden;
+      margin: 14px 0 8px;
+    }
+
+    .timeline::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      width: 68%;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      border-radius: inherit;
+      box-shadow: 0 0 18px rgba(181, 139, 255, 0.45);
+      animation: pulse 3s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { filter: brightness(1); }
+      50% { filter: brightness(1.35); }
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-top: 6px;
+    }
+
+    .control-btn {
+      padding: 12px 0;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(0, 0, 0, 0.18);
+      color: var(--text);
+      font-weight: 700;
+      text-align: center;
+      box-shadow: 0 12px 24px rgba(0, 0, 0, 0.26);
+    }
+    .control-btn.primary {
+      background: linear-gradient(145deg, var(--accent), var(--accent-2));
+      color: #05060b;
+      border: none;
+    }
+
+    .section-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 4px 2px 6px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-size: 12px;
+    }
+
+    .grid-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 12px;
+    }
+
+    .card {
+      padding: 12px;
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      display: grid;
+      gap: 6px;
+      position: relative;
+    }
+
+    .card .badge {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+    }
+
+    .card-title { margin: 6px 0 0; font-size: 14px; }
+    .card-subtitle { margin: 0; color: var(--muted); font-size: 12px; }
+
+    .pill-row {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .cta {
+      display: block;
+      width: 100%;
+      margin-top: 6px;
+      padding: 14px;
+      text-align: center;
+      border-radius: 14px;
+      background: linear-gradient(145deg, var(--accent), var(--accent-2));
+      color: #05060b;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      box-shadow: 0 18px 32px rgba(0, 0, 0, 0.35);
+      text-decoration: none;
+    }
+
+    footer {
+      padding: 12px 18px 16px;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      background: rgba(255, 255, 255, 0.03);
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .nav-item {
+      text-align: center;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .nav-item strong { display: block; color: var(--text); margin-bottom: 6px; font-size: 16px; }
+
+    @media (max-width: 360px) {
+      header { grid-template-columns: 48px 1fr 44px; }
+      .avatar, .icon-btn { width: 44px; height: 44px; }
+      .cover { width: 60px; height: 60px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <header>
+      <div class="avatar">MIC</div>
+      <div class="title-block">
+        <h1>MIC Pro <span class="pill">Mobile only</span></h1>
+        <div style="color: var(--muted); font-size: 13px;">Immersive creator-first music control center</div>
+      </div>
+      <div class="header-actions">
+        <div class="icon-btn">＋</div>
+      </div>
+    </header>
+
+    <div class="glass-panel grid" aria-label="search and filters">
+      <div class="search-bar">
+        <span style="color: var(--muted);">🔍</span>
+        <input class="search-input" placeholder="Search tracks, sets, artists" />
+        <span class="badge">Voice</span>
+      </div>
+      <div class="chip-row" aria-label="quick filters">
+        <div class="chip">🔥 Trending</div>
+        <div class="chip">✨ New Drops</div>
+        <div class="chip">🌒 Mood Shift</div>
+        <div class="chip">🎛️ Live Mix</div>
+        <div class="chip">🧪 Labs</div>
+      </div>
+      <div class="stat-row" style="grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));">
+        <div class="stat-card" style="background: linear-gradient(145deg, rgba(255, 205, 75, 0.12), rgba(15, 17, 26, 0.75));">
+          <small>Daily Focus</small>
+          <h2>Sunrise Reset</h2>
+          <div style="color: var(--muted); font-size: 12px;">Optimized for headphones</div>
+        </div>
+        <div class="stat-card" style="background: linear-gradient(145deg, rgba(88, 225, 193, 0.14), rgba(15, 17, 26, 0.75));">
+          <small>Scene Routing</small>
+          <h2>Club → Home</h2>
+          <div style="color: var(--muted); font-size: 12px;">Auto-loudness + crossfade</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="glass-panel grid">
+      <div class="section-title">
+        <span>Realtime signal</span><span>Hi-Fi</span>
+      </div>
+      <div class="stat-row">
+        <div class="stat-card">
+          <small>Listeners</small>
+          <h2>12.8k <span class="badge">Now</span></h2>
+          <div style="color: var(--accent-2); font-size: 12px;">+1.6k vs last hour</div>
+        </div>
+        <div class="stat-card">
+          <small>Sessions</small>
+          <h2>342 <span style="color: var(--warning); font-size: 12px;">Live</span></h2>
+          <div style="color: var(--muted); font-size: 12px;">Premium rooms boosted</div>
+        </div>
+        <div class="stat-card">
+          <small>Energy</small>
+          <h2>82% <span style="color: var(--danger); font-size: 12px;">Peak</span></h2>
+          <div style="color: var(--muted); font-size: 12px;">Crowd sync enabled</div>
+        </div>
+      </div>
+      <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));">
+        <div class="card" style="background: rgba(255,255,255,0.05);">
+          <span class="badge">Heatmap</span>
+          <p class="card-title">Engagement arc</p>
+          <p class="card-subtitle">Peaks @ 01:30 / 02:40 / 03:10</p>
+          <div class="timeline" style="margin-top: 4px; height: 8px;">
+            <div style="position:absolute; left:25%; top:-6px; color: var(--warning); font-size: 12px;">▲</div>
+            <div style="position:absolute; left:58%; top:-6px; color: var(--warning); font-size: 12px;">▲</div>
+            <div style="position:absolute; left:82%; top:-6px; color: var(--warning); font-size: 12px;">▲</div>
+          </div>
+        </div>
+        <div class="card" style="background: rgba(255,255,255,0.05);">
+          <span class="badge">Latency</span>
+          <p class="card-title">8 ms</p>
+          <p class="card-subtitle">Signal stabilized • Auto-heal on</p>
+          <div class="pill-row">
+            <span class="pill">Edge</span>
+            <span class="pill">Spatial</span>
+            <span class="pill">Safe</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="glass-panel grid">
+      <div class="section-title">
+        <span>Now playing control</span><span>Adaptive</span>
+      </div>
+      <div class="now-playing">
+        <div class="row-between">
+          <div class="song-meta">
+            <div class="cover">M•P</div>
+            <div>
+              <h3>Pulse Drift (VIP)</h3>
+              <p>by Nyla / Deep Pulse</p>
+              <div class="pill-row">
+                <span class="pill" style="background: rgba(88, 225, 193, 0.2); color: var(--accent-2);">Spatial</span>
+                <span class="pill">Lossless</span>
+              </div>
+            </div>
+          </div>
+          <span class="badge">LIVE ROOM</span>
+        </div>
+        <div class="timeline"></div>
+        <div class="row-between" style="color: var(--muted); font-size: 12px;">
+          <span>01:21</span>
+          <span>03:45</span>
+        </div>
+        <div class="controls">
+          <div class="control-btn">⏮</div>
+          <div class="control-btn primary">⏯</div>
+          <div class="control-btn">⏭</div>
+        </div>
+      </div>
+      <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));">
+        <div class="card">
+          <span class="badge">FX Rack</span>
+          <p class="card-title">Studio chain</p>
+          <p class="card-subtitle">Glue comp • Harmonic exciter • Tilt EQ</p>
+          <div class="pill-row">
+            <span class="pill">Auto</span>
+            <span class="pill">Safe</span>
+            <span class="pill">Print</span>
+          </div>
+        </div>
+        <div class="card">
+          <span class="badge">Queue</span>
+          <p class="card-title">Next up</p>
+          <p class="card-subtitle">Chroma Run • Velvet Tape • Rift Bloom</p>
+          <div class="pill-row">
+            <span class="pill">Smart fade</span>
+            <span class="pill">Autopilot</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="glass-panel grid">
+      <div class="section-title">
+        <span>Studio surface</span><span>Curated for you</span>
+      </div>
+      <div class="grid-list">
+        <div class="card">
+          <span class="badge">AI mix</span>
+          <div class="cover" style="width: 100%; height: 120px;">Deep Bloom</div>
+          <p class="card-title">Horizon Bloom</p>
+          <p class="card-subtitle">Cinematic chill • 32 tracks</p>
+          <div class="pill-row">
+            <span class="pill">Warm</span>
+            <span class="pill">Dynamic</span>
+          </div>
+        </div>
+        <div class="card">
+          <span class="badge">Crowd</span>
+          <div class="cover" style="width: 100%; height: 120px;">Future Flex</div>
+          <p class="card-title">Pulse Flex</p>
+          <p class="card-subtitle">Live bass • 18 tracks</p>
+          <div class="pill-row">
+            <span class="pill">Energy</span>
+            <span class="pill">Bass</span>
+          </div>
+        </div>
+      </div>
+      <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));">
+        <div class="card">
+          <span class="badge">Toolkit</span>
+          <p class="card-title">Automations</p>
+          <p class="card-subtitle">Fade in 4s • Smart gate • Stereo widen</p>
+          <div class="pill-row">
+            <span class="pill">Pinned</span>
+            <span class="pill">Mobile</span>
+          </div>
+        </div>
+        <div class="card">
+          <span class="badge">Mixdown</span>
+          <p class="card-title">Render queue</p>
+          <p class="card-subtitle">2 exports • 1 stem pack • 1 Dolby</p>
+          <div class="pill-row">
+            <span class="pill">Lossless</span>
+            <span class="pill">Notify</span>
+          </div>
+        </div>
+      </div>
+      <a class="cta" href="#">Launch MIC Pro Studio</a>
+    </div>
+
+    <div class="glass-panel grid">
+      <div class="section-title">
+        <span>Creator desk</span><span>Live tools</span>
+      </div>
+      <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));">
+        <div class="card">
+          <span class="badge">Scheduler</span>
+          <p class="card-title">Tonight 10:00p</p>
+          <p class="card-subtitle">Premiere: Midnight Bloom (Feat. Rue)</p>
+          <div class="pill-row">
+            <span class="pill">Auto publish</span>
+            <span class="pill">Promo</span>
+          </div>
+        </div>
+        <div class="card">
+          <span class="badge">Rooms</span>
+          <p class="card-title">VIP lounge</p>
+          <p class="card-subtitle">52 listeners • Low-latency</p>
+          <div class="pill-row">
+            <span class="pill">Mod</span>
+            <span class="pill">Backstage</span>
+          </div>
+        </div>
+        <div class="card">
+          <span class="badge">Telemetry</span>
+          <p class="card-title">Health</p>
+          <p class="card-subtitle">CPU 34% • Net 12 mbps • Temp cool</p>
+          <div class="pill-row">
+            <span class="pill">Stable</span>
+            <span class="pill">Auto-heal</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      <div class="nav-item">
+        <strong>●</strong>
+        Home
+      </div>
+      <div class="nav-item">
+        <strong>⌘</strong>
+        Studio
+      </div>
+      <div class="nav-item">
+        <strong>★</strong>
+        Favs
+      </div>
+      <div class="nav-item">
+        <strong>⚙︎</strong>
+        Settings
+      </div>
+    </footer>
+  </div>
+</body>
+</html>
