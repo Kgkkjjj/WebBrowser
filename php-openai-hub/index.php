@@ -421,55 +421,93 @@ if ($uid === null && $view === 'dashboard') {
     <style>
         :root {
             color-scheme: light;
-            --bg: #f3f7ff;
+            --bg: #f4f7ff;
             --card: #ffffff;
-            --text: #0c1b2a;
-            --muted: #5e6d7b;
-            --primary: #2f64ff;
+            --surface: #edf2ff;
+            --text: #0f172a;
+            --muted: #5f6b81;
+            --primary: #3867ff;
+            --primary-dark: #274dd5;
             --danger: #c0392b;
             --ok: #0d8f58;
-            --border: #d8e1ef;
+            --border: #dbe3f2;
+            --shadow: 0 10px 28px rgba(24, 38, 74, 0.08);
         }
 
         * { box-sizing: border-box; }
         body {
             margin: 0;
             font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-            background: linear-gradient(180deg, #eef4ff 0%, var(--bg) 40%);
+            background: linear-gradient(180deg, #eef4ff 0%, var(--bg) 60%);
             color: var(--text);
         }
 
         .container {
-            max-width: 1180px;
-            margin: 2rem auto;
-            padding: 0 1rem 2rem;
+            max-width: 1280px;
+            margin: 1rem auto;
+            padding: 0 0.85rem 2rem;
         }
 
-        header {
+        .topbar {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 1rem;
+            gap: 0.75rem;
             margin-bottom: 1rem;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 0.85rem 1rem;
+            box-shadow: var(--shadow);
         }
 
         h1 { margin: 0; }
-        .subtitle { color: var(--muted); margin: 0.35rem 0 0; }
+        .subtitle { color: var(--muted); margin: 0.35rem 0 0; font-size: 0.92rem; }
 
         .grid {
             display: grid;
             gap: 1rem;
             margin-bottom: 1rem;
         }
-        .cols-2 { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+        .cols-2 { grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); }
         .cols-3 { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+        .stats { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
 
         .card {
             background: var(--card);
             border: 1px solid var(--border);
-            border-radius: 12px;
-            box-shadow: 0 8px 20px rgba(17, 41, 76, 0.07);
+            border-radius: 14px;
+            box-shadow: var(--shadow);
             padding: 1rem;
+        }
+        .card h2, .card h3 { margin-top: 0.2rem; }
+
+        .layout {
+            display: grid;
+            gap: 1rem;
+        }
+        .sidebar {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 0.9rem;
+            box-shadow: var(--shadow);
+            height: fit-content;
+        }
+        .sidebar h3 { margin: 0 0 0.8rem; font-size: 1rem; }
+        .sidebar .item { margin-top: 0.5rem; }
+        .main { min-width: 0; }
+        .metric {
+            background: linear-gradient(180deg, #f7f9ff 0%, var(--surface) 100%);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 0.75rem;
+        }
+        .metric .value {
+            display: block;
+            font-size: 1.45rem;
+            font-weight: 700;
+            margin-top: 0.2rem;
         }
 
         label { display: block; margin-bottom: 0.65rem; font-size: 0.95rem; }
@@ -482,6 +520,10 @@ if ($uid === null && $view === 'dashboard') {
             font-size: 0.95rem;
         }
         textarea { resize: vertical; }
+        input:focus, textarea:focus {
+            outline: 2px solid rgba(56, 103, 255, 0.2);
+            border-color: var(--primary);
+        }
 
         button {
             background: var(--primary);
@@ -489,8 +531,11 @@ if ($uid === null && $view === 'dashboard') {
             border: none;
             font-weight: 600;
             cursor: pointer;
+            transition: transform .12s ease, background .2s ease;
         }
+        button:hover { background: var(--primary-dark); transform: translateY(-1px); }
         button.secondary { background: #213248; }
+        button.secondary:hover { background: #172536; }
         .inline { display: inline-flex; }
         .inline button { width: auto; }
 
@@ -503,6 +548,11 @@ if ($uid === null && $view === 'dashboard') {
             background: #f9fbff;
         }
         .item strong { display: block; }
+        .item-list {
+            max-height: 280px;
+            overflow: auto;
+            padding-right: 0.15rem;
+        }
         .flash {
             border-radius: 10px;
             padding: 0.75rem 0.85rem;
@@ -519,14 +569,29 @@ if ($uid === null && $view === 'dashboard') {
             padding: 0.7rem;
             border-radius: 8px;
         }
+        .auth-wrap {
+            max-width: 980px;
+            margin: 1rem auto 0;
+        }
+        @media (min-width: 992px) {
+            .layout { grid-template-columns: 280px minmax(0, 1fr); }
+            .container { margin-top: 1.25rem; }
+        }
+        @media (max-width: 700px) {
+            .topbar { padding: 0.8rem; }
+            .topbar h1 { font-size: 1.2rem; }
+            .subtitle { font-size: 0.85rem; }
+            .card { padding: 0.85rem; }
+            .item-list { max-height: 240px; }
+        }
     </style>
 </head>
 <body>
 <div class="container">
-    <header>
+    <header class="topbar">
         <div>
             <h1>OpenAI Hub</h1>
-            <p class="subtitle">Secure PHP workspace for user-owned agents and training workflows</p>
+            <p class="subtitle">Smooth responsive dashboard for mobile + desktop agent operations</p>
         </div>
         <?php if ($uid !== null): ?>
             <form method="post" class="inline">
@@ -542,37 +607,39 @@ if ($uid === null && $view === 'dashboard') {
     <?php endif; ?>
 
     <?php if ($view === 'login'): ?>
-        <section class="grid cols-2">
-            <article class="card">
-                <h2>Login</h2>
-                <form method="post">
-                    <input type="hidden" name="csrf" value="<?= Security::e(Security::csrfToken()) ?>">
-                    <input type="hidden" name="action" value="login">
-                    <label>Email
-                        <input required type="email" name="email" autocomplete="email">
-                    </label>
-                    <label>Password
-                        <input required type="password" name="password" autocomplete="current-password">
-                    </label>
-                    <button type="submit">Sign in</button>
-                </form>
-            </article>
-            <article class="card">
-                <h2>Create account</h2>
-                <form method="post">
-                    <input type="hidden" name="csrf" value="<?= Security::e(Security::csrfToken()) ?>">
-                    <input type="hidden" name="action" value="register">
-                    <label>Email
-                        <input required type="email" name="email" autocomplete="email">
-                    </label>
-                    <label>Password
-                        <input required type="password" name="password" autocomplete="new-password">
-                    </label>
-                    <p class="hint">Use 12+ chars with uppercase, lowercase, number, and symbol.</p>
-                    <button type="submit">Register</button>
-                </form>
-            </article>
-        </section>
+        <div class="auth-wrap">
+            <section class="grid cols-2">
+                <article class="card">
+                    <h2>Login</h2>
+                    <form method="post">
+                        <input type="hidden" name="csrf" value="<?= Security::e(Security::csrfToken()) ?>">
+                        <input type="hidden" name="action" value="login">
+                        <label>Email
+                            <input required type="email" name="email" autocomplete="email">
+                        </label>
+                        <label>Password
+                            <input required type="password" name="password" autocomplete="current-password">
+                        </label>
+                        <button type="submit">Sign in</button>
+                    </form>
+                </article>
+                <article class="card">
+                    <h2>Create account</h2>
+                    <form method="post">
+                        <input type="hidden" name="csrf" value="<?= Security::e(Security::csrfToken()) ?>">
+                        <input type="hidden" name="action" value="register">
+                        <label>Email
+                            <input required type="email" name="email" autocomplete="email">
+                        </label>
+                        <label>Password
+                            <input required type="password" name="password" autocomplete="new-password">
+                        </label>
+                        <p class="hint">Use 12+ chars with uppercase, lowercase, number, and symbol.</p>
+                        <button type="submit">Register</button>
+                    </form>
+                </article>
+            </section>
+        </div>
     <?php endif; ?>
 
     <?php if ($uid !== null): ?>
@@ -581,86 +648,126 @@ if ($uid === null && $view === 'dashboard') {
             $jobs = $repo->listModelJobs($uid);
             $tokens = $repo->listApiTokens($uid);
             $logs = $repo->listAuditLogs($uid);
+            $runningJobs = count(array_filter($jobs, static fn(array $job): bool => $job['status'] === 'queued'));
         ?>
-        <section class="grid cols-2">
-            <article class="card">
-                <h2>Create Agent</h2>
-                <form method="post">
-                    <input type="hidden" name="csrf" value="<?= Security::e(Security::csrfToken()) ?>">
-                    <input type="hidden" name="action" value="create_agent">
-                    <label>Name <input required type="text" name="name" maxlength="80"></label>
-                    <label>Purpose <input required type="text" name="purpose" maxlength="120"></label>
-                    <label>System Prompt <textarea required name="prompt" rows="4" maxlength="1200"></textarea></label>
-                    <label>Safety Policy <textarea required name="policy" rows="3" maxlength="1000"></textarea></label>
-                    <button type="submit">Create Agent</button>
-                </form>
+        <section class="grid stats">
+            <article class="metric">
+                <small>Agents</small>
+                <span class="value"><?= Security::e((string) count($agents)) ?></span>
             </article>
-
-            <article class="card">
-                <h2>Queue Model Training</h2>
-                <form method="post">
-                    <input type="hidden" name="csrf" value="<?= Security::e(Security::csrfToken()) ?>">
-                    <input type="hidden" name="action" value="create_model_job">
-                    <label>Base Model <input required type="text" name="model_name" placeholder="gpt-4.1-mini"></label>
-                    <label>Dataset Summary <textarea required name="dataset_summary" rows="3"></textarea></label>
-                    <label>Training Goal <textarea required name="goal" rows="3"></textarea></label>
-                    <button type="submit">Queue Training Job</button>
-                </form>
+            <article class="metric">
+                <small>Training Jobs</small>
+                <span class="value"><?= Security::e((string) count($jobs)) ?></span>
+            </article>
+            <article class="metric">
+                <small>Queued Jobs</small>
+                <span class="value"><?= Security::e((string) $runningJobs) ?></span>
+            </article>
+            <article class="metric">
+                <small>API Tokens</small>
+                <span class="value"><?= Security::e((string) count($tokens)) ?></span>
             </article>
         </section>
 
-        <section class="grid cols-3">
-            <article class="card">
-                <h3>Your Agents</h3>
-                <?php foreach ($agents as $agent): ?>
-                    <div class="item">
-                        <strong><?= Security::e((string) $agent['name']) ?></strong>
-                        <small><?= Security::e((string) $agent['purpose']) ?></small>
-                    </div>
-                <?php endforeach; ?>
-                <?php if (!$agents): ?><p class="hint">No agents yet.</p><?php endif; ?>
-            </article>
+        <div class="layout">
+            <aside class="sidebar">
+                <h3>Quick Actions</h3>
+                <div class="item"><strong>Create Agent</strong><small>Define role, prompt, and safety policy.</small></div>
+                <div class="item"><strong>Queue Training</strong><small>Submit dataset goals and model target.</small></div>
+                <div class="item"><strong>Generate Token</strong><small>Issue a new secure API token.</small></div>
+                <div class="item"><strong>Audit</strong><small>Review recent security-sensitive events.</small></div>
+            </aside>
 
-            <article class="card">
-                <h3>Training Jobs</h3>
-                <?php foreach ($jobs as $job): ?>
-                    <div class="item">
-                        <strong><?= Security::e((string) $job['model_name']) ?></strong>
-                        <small>Status: <?= Security::e((string) $job['status']) ?></small>
-                    </div>
-                <?php endforeach; ?>
-                <?php if (!$jobs): ?><p class="hint">No training jobs queued.</p><?php endif; ?>
-            </article>
+            <main class="main">
+                <section class="grid cols-2">
+                    <article class="card">
+                        <h2>Create Agent</h2>
+                        <form method="post">
+                            <input type="hidden" name="csrf" value="<?= Security::e(Security::csrfToken()) ?>">
+                            <input type="hidden" name="action" value="create_agent">
+                            <label>Name <input required type="text" name="name" maxlength="80"></label>
+                            <label>Purpose <input required type="text" name="purpose" maxlength="120"></label>
+                            <label>System Prompt <textarea required name="prompt" rows="4" maxlength="1200"></textarea></label>
+                            <label>Safety Policy <textarea required name="policy" rows="3" maxlength="1000"></textarea></label>
+                            <button type="submit">Create Agent</button>
+                        </form>
+                    </article>
 
-            <article class="card">
-                <h3>API Tokens</h3>
-                <form method="post">
-                    <input type="hidden" name="csrf" value="<?= Security::e(Security::csrfToken()) ?>">
-                    <input type="hidden" name="action" value="create_token">
-                    <button type="submit">Generate Token</button>
-                </form>
-                <?php if ($newToken): ?>
-                    <p class="token">New token: <?= Security::e($newToken) ?></p>
-                <?php endif; ?>
-                <?php foreach ($tokens as $token): ?>
-                    <div class="item">
-                        <strong><?= Security::e((string) $token['token_hint']) ?></strong>
-                        <small><?= Security::e((string) $token['created_at']) ?></small>
-                    </div>
-                <?php endforeach; ?>
-            </article>
-        </section>
+                    <article class="card">
+                        <h2>Queue Model Training</h2>
+                        <form method="post">
+                            <input type="hidden" name="csrf" value="<?= Security::e(Security::csrfToken()) ?>">
+                            <input type="hidden" name="action" value="create_model_job">
+                            <label>Base Model <input required type="text" name="model_name" placeholder="gpt-4.1-mini"></label>
+                            <label>Dataset Summary <textarea required name="dataset_summary" rows="3"></textarea></label>
+                            <label>Training Goal <textarea required name="goal" rows="3"></textarea></label>
+                            <button type="submit">Queue Training Job</button>
+                        </form>
+                    </article>
+                </section>
 
-        <section class="card">
-            <h3>Audit Trail</h3>
-            <?php foreach ($logs as $log): ?>
-                <div class="item">
-                    <strong><?= Security::e((string) $log['event_type']) ?></strong>
-                    <small><?= Security::e((string) $log['details']) ?> · <?= Security::e((string) $log['created_at']) ?></small>
-                </div>
-            <?php endforeach; ?>
-            <?php if (!$logs): ?><p class="hint">No security events recorded yet.</p><?php endif; ?>
-        </section>
+                <section class="grid cols-3">
+                    <article class="card">
+                        <h3>Your Agents</h3>
+                        <div class="item-list">
+                            <?php foreach ($agents as $agent): ?>
+                                <div class="item">
+                                    <strong><?= Security::e((string) $agent['name']) ?></strong>
+                                    <small><?= Security::e((string) $agent['purpose']) ?></small>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                        <?php if (!$agents): ?><p class="hint">No agents yet.</p><?php endif; ?>
+                    </article>
+
+                    <article class="card">
+                        <h3>Training Jobs</h3>
+                        <div class="item-list">
+                            <?php foreach ($jobs as $job): ?>
+                                <div class="item">
+                                    <strong><?= Security::e((string) $job['model_name']) ?></strong>
+                                    <small>Status: <?= Security::e((string) $job['status']) ?></small>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                        <?php if (!$jobs): ?><p class="hint">No training jobs queued.</p><?php endif; ?>
+                    </article>
+
+                    <article class="card">
+                        <h3>API Tokens</h3>
+                        <form method="post">
+                            <input type="hidden" name="csrf" value="<?= Security::e(Security::csrfToken()) ?>">
+                            <input type="hidden" name="action" value="create_token">
+                            <button type="submit">Generate Token</button>
+                        </form>
+                        <?php if ($newToken): ?>
+                            <p class="token">New token: <?= Security::e($newToken) ?></p>
+                        <?php endif; ?>
+                        <div class="item-list">
+                            <?php foreach ($tokens as $token): ?>
+                                <div class="item">
+                                    <strong><?= Security::e((string) $token['token_hint']) ?></strong>
+                                    <small><?= Security::e((string) $token['created_at']) ?></small>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    </article>
+                </section>
+
+                <section class="card">
+                    <h3>Audit Trail</h3>
+                    <div class="item-list">
+                        <?php foreach ($logs as $log): ?>
+                            <div class="item">
+                                <strong><?= Security::e((string) $log['event_type']) ?></strong>
+                                <small><?= Security::e((string) $log['details']) ?> · <?= Security::e((string) $log['created_at']) ?></small>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                    <?php if (!$logs): ?><p class="hint">No security events recorded yet.</p><?php endif; ?>
+                </section>
+            </main>
+        </div>
     <?php endif; ?>
 </div>
 </body>

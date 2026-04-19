@@ -10,6 +10,7 @@ It includes:
 - User-owned model training job queue records.
 - API token generation (stored hashed).
 - User audit trail.
+- A responsive dashboard optimized for both mobile and desktop layouts.
 - Built-in security controls (CSRF, secure sessions, login rate limit, prepared SQL, output escaping, CSP headers).
 
 ## Run locally
