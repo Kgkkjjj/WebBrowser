@@ -1,0 +1,100 @@
+:root {
+    color-scheme: light;
+    --bg: #f3f7ff;
+    --card: #ffffff;
+    --text: #0c1b2a;
+    --muted: #5e6d7b;
+    --primary: #2f64ff;
+    --danger: #c0392b;
+    --ok: #0d8f58;
+    --border: #d8e1ef;
+}
+
+* { box-sizing: border-box; }
+body {
+    margin: 0;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    background: linear-gradient(180deg, #eef4ff 0%, var(--bg) 40%);
+    color: var(--text);
+}
+
+.container {
+    max-width: 1180px;
+    margin: 2rem auto;
+    padding: 0 1rem 2rem;
+}
+
+header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+h1 { margin: 0; }
+.subtitle { color: var(--muted); margin: 0.35rem 0 0; }
+
+.grid {
+    display: grid;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+.cols-2 { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+.cols-3 { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+
+.card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: 0 8px 20px rgba(17, 41, 76, 0.07);
+    padding: 1rem;
+}
+
+label { display: block; margin-bottom: 0.65rem; font-size: 0.95rem; }
+input, textarea, button {
+    width: 100%;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    padding: 0.62rem 0.75rem;
+    margin-top: 0.35rem;
+    font-size: 0.95rem;
+}
+textarea { resize: vertical; }
+
+button {
+    background: var(--primary);
+    color: white;
+    border: none;
+    font-weight: 600;
+    cursor: pointer;
+}
+button.secondary { background: #213248; }
+.inline { display: inline-flex; }
+.inline button { width: auto; }
+
+.hint, small { color: var(--muted); }
+.item {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 0.55rem 0.7rem;
+    margin-top: 0.55rem;
+    background: #f9fbff;
+}
+.item strong { display: block; }
+.flash {
+    border-radius: 10px;
+    padding: 0.75rem 0.85rem;
+    margin-bottom: 1rem;
+    color: white;
+}
+.flash.ok { background: var(--ok); }
+.flash.error { background: var(--danger); }
+.token {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    word-break: break-all;
+    background: #0d1b2f;
+    color: #96f5c4;
+    padding: 0.7rem;
+    border-radius: 8px;
+}
